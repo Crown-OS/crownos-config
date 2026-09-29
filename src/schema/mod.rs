@@ -39,6 +39,7 @@
 
 pub mod appearance;
 pub mod bluetooth;
+pub mod clipboard;
 pub mod compositor;
 pub mod display;
 pub mod input;
@@ -46,14 +47,17 @@ pub mod keybinds;
 pub mod notification;
 pub mod power;
 pub mod sound;
+pub mod theme;
 pub mod wifi;
 
 pub use appearance::{AccentColor, AnimationProfile, Appearance, AppearanceKey};
 pub use bluetooth::{Bluetooth, BluetoothKey};
+pub use clipboard::{Clipboard, ClipboardKey};
 pub use compositor::{
-    Compositor, CompositorKey, OutputSetting, OutputTransform, WindowRule, WorkspaceMode,
+    Compositor, CompositorKey, GamingOptions, OutputLayout, OutputSetting, OutputTransform, Vrr,
+    WindowRule, WorkspaceMode,
 };
-pub use display::{Display, DisplayKey, DisplayScale};
+pub use display::{Display, DisplayKey};
 pub use input::{Input, InputKey};
 pub use keybinds::{Binding, Keybinds, KeybindsKey};
 pub use notification::{Notifications, NotificationsKey};

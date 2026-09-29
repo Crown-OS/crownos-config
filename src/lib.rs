@@ -72,6 +72,6 @@ pub use watch::{subscribe, subscribe_key, subscribe_typed, Subscription};
 
 /// Every settings type, also reachable as `crownos_config::schema::*`.
 pub use schema::{
-    AccentColor, Appearance, Bluetooth, Compositor, Display, DisplayScale, Input, Keybinds,
-    Notifications, Power, PowerProfile, Sound, Wifi,
+    AccentColor, Appearance, Bluetooth, Compositor, Display, Input, Keybinds, Notifications,
+    Power, PowerProfile, Sound, Wifi,
 };
