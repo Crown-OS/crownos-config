@@ -116,7 +116,8 @@ macro_rules! keys {
         /// Deliberately not every key a keyboard has. A shortcut that named
         /// `LaunchMail` or a dead key would be one no consumer could reasonably
         /// translate, and every key here is one that exists on the keyboards
-        /// CrownOS runs on, in the same place, under the same name.
+        /// CrownOS runs on, in the same place, under the same name — the
+        /// volume, media and brightness keys included.
         ///
         /// Closed on purpose — no `#[non_exhaustive]`. A consumer translating
         /// these into its own vocabulary (evdev codes, say) writes one match
@@ -253,6 +254,19 @@ keys! {
     Comma => "Comma", "Comma";
     Period => "Period", "Period";
     Slash => "Slash", "Slash";
+
+    AudioVolumeUp => "AudioVolumeUp", "VolumeUp";
+    AudioVolumeDown => "AudioVolumeDown", "VolumeDown";
+    AudioVolumeMute => "AudioVolumeMute", "Mute";
+    MicrophoneMute => "MicrophoneMuteToggle", "MicMute";
+    MediaPlayPause => "MediaPlayPause", "PlayPause";
+    MediaStop => "MediaStop", "MediaStop";
+    MediaTrackNext => "MediaTrackNext", "NextTrack";
+    MediaTrackPrevious => "MediaTrackPrevious", "PreviousTrack";
+    BrightnessUp => "BrightnessUp", "BrightnessUp";
+    BrightnessDown => "BrightnessDown", "BrightnessDown";
+    KeyboardBrightnessUp => "KbdIllumUp", "KbdBrightnessUp";
+    KeyboardBrightnessDown => "KbdIllumDown", "KbdBrightnessDown";
 }
 
 impl fmt::Display for KeyCode {
@@ -536,6 +550,18 @@ mod tests {
         // And a key no shortcut may use stays unusable rather than becoming a
         // near-miss.
         assert_eq!(KeyCode::from_code("LaunchMail"), None);
+    }
+
+    #[test]
+    fn hardware_keys_bind_without_modifiers() {
+        let bind: Keybind = "VolumeUp".parse().expect("a bare volume key parses");
+        assert_eq!(bind.mods, Mods::NONE);
+        assert_eq!(bind.key, Some(KeyCode::AudioVolumeUp));
+        assert_eq!(
+            KeyCode::from_code("MediaPlayPause"),
+            Some(KeyCode::MediaPlayPause)
+        );
+        assert_eq!(bind.to_string(), "VolumeUp");
     }
 
     /// Every key is reachable by both of its names, and no two share either.
