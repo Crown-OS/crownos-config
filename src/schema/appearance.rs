@@ -44,7 +44,7 @@ crate::section! {
         pub appmenu as Appmenu: bool = true,
 
         pub blur as Blur: bool = true,
-        pub blur_passes as BlurPasses: u16 = 3,
+        pub blur_passes as BlurPasses: u16 = 4,
         pub blur_size as BlurSize: f64 = 1.5,
         pub blur_noise as BlurNoise: f64 = 0.01,
     }

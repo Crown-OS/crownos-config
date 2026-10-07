@@ -18,7 +18,8 @@ pub struct EdgeGlow {
     /// Brightness of the highlight along the edge, 0 to 1.
     pub intensity: f64,
     /// Where the light comes from, in degrees clockwise from straight up. The
-    /// highlight sits on the two edges facing along this line.
+    /// highlight sits on the two edges facing along this line, and the light it
+    /// lets in pools as a soft glow inside the far one.
     pub light_angle: f64,
     /// How much the highlight takes its colour from what is behind the glass:
     /// 0 is white light, 1 is lit entirely in the colours of the window below.
@@ -28,28 +29,30 @@ pub struct EdgeGlow {
 }
 
 impl EdgeGlow {
+    /// Thick frosted glass lit from above: a hairline along the top edge and
+    /// the light it lets in gathered inside the bottom one, in nearly white
+    /// light so the rim reads as glass rather than as a coloured border.
     pub const WINDOW: Self = Self {
         enabled: true,
-        width: 2.0,
-        intensity: 0.3,
-        light_angle: -45.0,
-        adaptive_tint: 0.6,
-        inner_shadow: 0.28,
+        width: 6.0,
+        intensity: 0.5,
+        light_angle: 0.0,
+        adaptive_tint: 0.1,
+        inner_shadow: 0.0,
     };
 
     /// Panels sit over everything, so their rim is what separates them from
     /// it: a touch brighter than a window's.
     pub const PANEL: Self = Self {
-        intensity: 0.4,
+        intensity: 0.6,
         ..Self::WINDOW
     };
 
     /// Menus are small and short-lived; a thin, quiet rim keeps them from
     /// looking like buttons.
     pub const MENU: Self = Self {
-        width: 1.5,
-        intensity: 0.25,
-        inner_shadow: 0.2,
+        width: 3.0,
+        intensity: 0.4,
         ..Self::WINDOW
     };
 }
