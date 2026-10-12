@@ -51,7 +51,9 @@ pub mod sound;
 pub mod theme;
 pub mod wifi;
 
-pub use appearance::{AccentColor, AnimationProfile, Appearance, AppearanceKey};
+pub use appearance::{
+    AccentColor, AnimationProfile, Appearance, AppearanceKey, CloseAnimation, MinimizeAnimation,
+};
 pub use bluetooth::{Bluetooth, BluetoothKey};
 pub use clipboard::{Clipboard, ClipboardKey};
 pub use compositor::{

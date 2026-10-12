@@ -276,6 +276,8 @@ mod tests {
                 "border_width",
                 "border_radius",
                 "animations",
+                "minimize_effect",
+                "close_effect",
                 "titlebar_height",
                 "snap",
                 "appmenu",

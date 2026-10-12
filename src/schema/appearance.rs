@@ -19,6 +19,26 @@ pub enum AnimationProfile {
     Smooth,
 }
 
+/// How a window travels into its icon and back out of it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum MinimizeAnimation {
+    /// Poured through a neck into the icon.
+    #[default]
+    Genie,
+    /// Scaled down whole into the icon.
+    Scale,
+}
+
+/// How a closed application window leaves the screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum CloseAnimation {
+    /// Crumbles into particles that fall away.
+    #[default]
+    Dust,
+    /// Shrinks into its icon.
+    Shrink,
+}
+
 crate::section! {
     pub struct Appearance in "appearance", keys AppearanceKey {
         pub dark_mode as DarkMode: bool = true,
@@ -38,6 +58,8 @@ crate::section! {
         pub border_width as BorderWidth: u16 = 2,
         pub border_radius as BorderRadius: u16 = 8,
         pub animations as Animations: AnimationProfile = AnimationProfile::Standard,
+        pub minimize_effect as MinimizeEffect: MinimizeAnimation = MinimizeAnimation::Genie,
+        pub close_effect as CloseEffect: CloseAnimation = CloseAnimation::Dust,
 
         pub titlebar_height as TitlebarHeight: u16 = 36,
         pub snap as Snap: bool = true,
