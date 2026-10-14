@@ -56,6 +56,7 @@ mod config;
 mod key;
 pub mod keybind;
 mod parser;
+pub mod patch;
 pub mod schema;
 mod util;
 mod watch;
@@ -67,11 +68,12 @@ pub use crate::config::{config_dir, CONFIG_DIR_ENV};
 pub use key::Key;
 pub use keybind::{KeyCode, Keybind, Mods};
 pub use parser::{load, save};
+pub use patch::{DynSection, PatchError, load_strict, read_key, write_keys};
 pub use util::{hash_bytes, last_written, path_for, record_written};
 pub use watch::{subscribe, subscribe_key, subscribe_typed, Subscription};
 
 /// Every settings type, also reachable as `crownos_config::schema::*`.
 pub use schema::{
-    AccentColor, Appearance, Bluetooth, Compositor, Display, Input, Keybinds, Notifications,
-    Power, PowerProfile, Sound, Wifi,
+    AccentColor, Appearance, Bar, Bluetooth, Compositor, Display, Input, Keybinds, Lock,
+    Notifications, Plugins, Power, PowerProfile, Sound, Theme, Wifi,
 };

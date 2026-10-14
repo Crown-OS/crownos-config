@@ -128,6 +128,33 @@ macro_rules! section {
             pub const SECTION: &'static str = $file;
         }
 
+        impl $crate::DynSection for $Section {
+            fn section_name(&self) -> &'static str {
+                $file
+            }
+
+            fn key_names(&self) -> &'static [&'static str] {
+                &[$(stringify!($field),)*]
+            }
+
+            fn get_ron(&self, key: &str) -> ::core::result::Result<::std::string::String, $crate::PatchError> {
+                match key {
+                    $(stringify!($field) => $crate::patch::to_ron($file, key, &self.$field),)*
+                    _ => Err($crate::PatchError::UnknownKey { section: $file, key: key.to_owned() }),
+                }
+            }
+
+            fn set_ron(&mut self, key: &str, text: &str) -> ::core::result::Result<(), $crate::PatchError> {
+                match key {
+                    $(stringify!($field) => {
+                        self.$field = $crate::patch::from_ron($file, key, text)?;
+                        Ok(())
+                    })*
+                    _ => Err($crate::PatchError::UnknownKey { section: $file, key: key.to_owned() }),
+                }
+            }
+        }
+
         #[allow(
             clippy::derivable_impls,
             reason = "generated from the `= value` on each field, not from the field's own Default"
@@ -284,7 +311,9 @@ mod tests {
                 "blur",
                 "blur_passes",
                 "blur_size",
-                "blur_noise"
+                "blur_noise",
+                "cursor_theme",
+                "icon_theme"
             ]
         );
         assert_eq!(

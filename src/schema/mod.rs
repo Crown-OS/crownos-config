@@ -38,6 +38,7 @@
 //! ```
 
 pub mod appearance;
+pub mod bar;
 pub mod bluetooth;
 pub mod clipboard;
 pub mod compositor;
@@ -45,7 +46,9 @@ pub mod display;
 pub mod glass;
 pub mod input;
 pub mod keybinds;
+pub mod lock;
 pub mod notification;
+pub mod plugins;
 pub mod power;
 pub mod sound;
 pub mod theme;
@@ -54,6 +57,7 @@ pub mod wifi;
 pub use appearance::{
     AccentColor, AnimationProfile, Appearance, AppearanceKey, CloseAnimation, MinimizeAnimation,
 };
+pub use bar::{Bar, BarKey, BarPosition};
 pub use bluetooth::{Bluetooth, BluetoothKey};
 pub use clipboard::{Clipboard, ClipboardKey};
 pub use compositor::{
@@ -64,7 +68,70 @@ pub use display::{Display, DisplayKey};
 pub use glass::{EdgeGlow, Glass, GlassKey};
 pub use input::{Input, InputKey};
 pub use keybinds::{Binding, Keybinds, KeybindsKey};
+pub use lock::{
+    Anchor, ClockStyle, Lock, LockBackground, LockKey, LockLayout, LockSlotPosition,
+    LockTransition, Placement, SlotPlacement,
+};
 pub use notification::{Notifications, NotificationsKey};
+pub use plugins::{Decision, Plugins, PluginsKey};
 pub use power::{Power, PowerKey, PowerProfile};
 pub use sound::{Sound, SoundKey};
+pub use theme::{AccentGradient, Font, Radii, Theme, ThemeKey};
 pub use wifi::{Wifi, WifiKey};
+
+use crate::patch::{DynSection, PatchError, edit_typed, read_typed};
+
+macro_rules! by_name {
+    ($($Section:ty),* $(,)?) => {
+        /// Every section name, i.e. every file `crownos-config` owns.
+        pub const SECTIONS: &[&str] = &[$(<$Section>::SECTION,)*];
+
+        /// Load the section called `section` and hand it to `read` by name.
+        pub fn read_section<R>(
+            section: &str,
+            read: impl FnOnce(&dyn DynSection) -> Result<R, PatchError>,
+        ) -> Result<R, PatchError> {
+            $(if section == <$Section>::SECTION {
+                return read_typed::<$Section, R>(section, read);
+            })*
+            Err(PatchError::UnknownSection(section.to_owned()))
+        }
+
+        /// Whether `text` is a valid value for `section.key`, without touching disk.
+        pub fn check_value(section: &str, key: &str, text: &str) -> Result<(), PatchError> {
+            $(if section == <$Section>::SECTION {
+                return <$Section>::default().set_ron(key, text);
+            })*
+            Err(PatchError::UnknownSection(section.to_owned()))
+        }
+
+        /// Load, edit by name, and save only if something changed.
+        pub fn edit_section<R>(
+            section: &str,
+            edit: impl FnOnce(&mut dyn DynSection) -> Result<R, PatchError>,
+        ) -> Result<R, PatchError> {
+            $(if section == <$Section>::SECTION {
+                return edit_typed::<$Section, R>(section, edit);
+            })*
+            Err(PatchError::UnknownSection(section.to_owned()))
+        }
+    };
+}
+
+by_name!(
+    Appearance,
+    Bar,
+    Bluetooth,
+    Clipboard,
+    Compositor,
+    Display,
+    Input,
+    Keybinds,
+    Lock,
+    Notifications,
+    Plugins,
+    Power,
+    Sound,
+    Theme,
+    Wifi,
+);

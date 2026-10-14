@@ -69,5 +69,11 @@ crate::section! {
         pub blur_passes as BlurPasses: u16 = 4,
         pub blur_size as BlurSize: f64 = 1.5,
         pub blur_noise as BlurNoise: f64 = 0.01,
+
+        /// Name of an XCursor theme under `/usr/share/icons`; empty keeps the
+        /// system default.
+        pub cursor_theme as CursorTheme: String = String::new(),
+        /// Name of a freedesktop icon theme; empty keeps the system default.
+        pub icon_theme as IconTheme: String = String::new(),
     }
 }

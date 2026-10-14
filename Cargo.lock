@@ -732,6 +732,7 @@ dependencies = [
  "notify",
  "ron",
  "serde",
+ "thiserror 2.0.19",
  "xilem",
 ]
 
