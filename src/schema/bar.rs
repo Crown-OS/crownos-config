@@ -24,7 +24,7 @@ crate::section! {
         pub floating as Floating: bool = false,
         pub margin as Margin: u16 = 0,
         pub radius as Radius: Option<u16> = None,
-        pub left as Left: Vec<String> = vec!["clock".to_owned()],
+        pub left as Left: Vec<String> = vec!["clock".to_owned(), "live".to_owned()],
         pub center as Center: Vec<String> = Vec::new(),
         pub right as Right: Vec<String> = [
             "layout",
