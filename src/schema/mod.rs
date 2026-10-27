@@ -50,6 +50,7 @@ pub mod lock;
 pub mod notification;
 pub mod plugins;
 pub mod power;
+pub mod screenshot;
 pub mod sound;
 pub mod theme;
 pub mod wifi;
@@ -69,12 +70,16 @@ pub use glass::{EdgeGlow, Glass, GlassKey};
 pub use input::{Input, InputKey};
 pub use keybinds::{Binding, Keybinds, KeybindsKey};
 pub use lock::{
-    Anchor, ClockStyle, Lock, LockBackground, LockKey, LockLayout, LockSlotPosition,
-    LockTransition, Placement, SlotPlacement,
+    Anchor, ClockArrangement, ClockFrame, ClockLook, ClockStyle, Easing, Edge, Effect, Lock,
+    LockBackground, LockKey, LockLayout, LockSlotPosition, LockTransitions, Placement,
+    SlotPlacement, Transition,
 };
 pub use notification::{Notifications, NotificationsKey};
 pub use plugins::{Decision, Plugins, PluginsKey};
 pub use power::{Power, PowerKey, PowerProfile};
+pub use screenshot::{
+    ImageFormat, RecordingQuality, Screenshot, ScreenshotKey, VideoCodec, VideoContainer,
+};
 pub use sound::{Sound, SoundKey};
 pub use theme::{AccentGradient, Font, Radii, Theme, ThemeKey};
 pub use wifi::{Wifi, WifiKey};
@@ -131,6 +136,7 @@ by_name!(
     Notifications,
     Plugins,
     Power,
+    Screenshot,
     Sound,
     Theme,
     Wifi,
