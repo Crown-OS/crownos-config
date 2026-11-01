@@ -237,6 +237,7 @@ keys! {
     PageUp => "PageUp", "PageUp";
     PageDown => "PageDown", "PageDown";
     CapsLock => "CapsLock", "CapsLock";
+    PrintScreen => "PrintScreen", "Print";
 
     ArrowUp => "ArrowUp", "Up";
     ArrowDown => "ArrowDown", "Down";
@@ -540,6 +541,10 @@ mod tests {
         assert_eq!(KeyCode::from_code("KeyA"), Some(KeyCode::A));
         assert_eq!(KeyCode::from_code("Space"), Some(KeyCode::Space));
         assert_eq!(KeyCode::from_code("ArrowLeft"), Some(KeyCode::ArrowLeft));
+        assert_eq!(
+            KeyCode::from_code("PrintScreen"),
+            Some(KeyCode::PrintScreen)
+        );
         assert_eq!(
             KeyCode::from_code("BracketLeft"),
             Some(KeyCode::LeftBracket)
