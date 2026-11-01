@@ -22,8 +22,11 @@ pub enum AnimationProfile {
 /// How a window travels into its icon and back out of it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum MinimizeAnimation {
-    /// Poured through a neck into the icon.
+    /// A drop of glass that lifts the icon out of its dock and stretches into
+    /// the window on springs, leading edge first.
     #[default]
+    Liquid,
+    /// Poured through a neck into the icon.
     Genie,
     /// Scaled down whole into the icon.
     Scale,
@@ -58,7 +61,7 @@ crate::section! {
         pub border_width as BorderWidth: u16 = 2,
         pub border_radius as BorderRadius: u16 = 8,
         pub animations as Animations: AnimationProfile = AnimationProfile::Standard,
-        pub minimize_effect as MinimizeEffect: MinimizeAnimation = MinimizeAnimation::Genie,
+        pub minimize_effect as MinimizeEffect: MinimizeAnimation = MinimizeAnimation::Liquid,
         pub close_effect as CloseEffect: CloseAnimation = CloseAnimation::Dust,
 
         pub titlebar_height as TitlebarHeight: u16 = 36,
