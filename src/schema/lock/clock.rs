@@ -11,6 +11,31 @@ pub enum ClockArrangement {
     Stacked,
 }
 
+/// The typeface the clock's digits are drawn in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ClockFont {
+    /// The lock's font family, or the theme's.
+    #[default]
+    Theme,
+    /// Monoline digits with round bowls that stay round however tall they stand.
+    Tall,
+    /// Monoline digits with squared bowls, for a narrower, denser clock.
+    Narrow,
+    /// High-contrast digits: heavy stems, hairline curves and ball terminals.
+    Serif,
+}
+
+/// Light the digits are drawn with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ClockLighting {
+    #[default]
+    None,
+    /// A soft halo of the digits' own colour around them.
+    Glow,
+    /// A band of light sweeping across the digits.
+    Sheen,
+}
+
 /// Where the clock sits and how it is bent, as the Settings handles leave it.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -54,6 +79,8 @@ impl ClockFrame {
 #[serde(default)]
 pub struct ClockLook {
     pub arrangement: ClockArrangement,
+    pub font: ClockFont,
+    pub lighting: ClockLighting,
     /// 100 to 900; `None` keeps the clock style's weight.
     pub weight: Option<u16>,
     /// How much taller than the font draws them the digits stand.
@@ -75,6 +102,8 @@ impl Default for ClockLook {
     fn default() -> Self {
         Self {
             arrangement: ClockArrangement::Row,
+            font: ClockFont::Theme,
+            lighting: ClockLighting::None,
             weight: None,
             stretch: 1.0,
             glass: false,

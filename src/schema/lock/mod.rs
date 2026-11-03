@@ -9,7 +9,7 @@ mod transition;
 
 use serde::{Deserialize, Serialize};
 
-pub use clock::{ClockArrangement, ClockFrame, ClockLook};
+pub use clock::{ClockArrangement, ClockFont, ClockFrame, ClockLighting, ClockLook};
 pub use transition::{Easing, Edge, Effect, LockTransitions, Transition};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -151,11 +151,13 @@ mod tests {
     fn a_partial_clock_keeps_the_other_defaults() {
         let lock: Lock = crate::parser::options()
             .from_str(
-                r#"(clock: (arrangement: Stacked, stretch: 2.4, frame: (warp: ((0.0, 0.0), (0.1, -0.2), (0.0, 0.0), (0.0, 0.0)))))"#,
+                r#"(clock: (arrangement: Stacked, font: Tall, lighting: Glow, stretch: 2.4, frame: (warp: ((0.0, 0.0), (0.1, -0.2), (0.0, 0.0), (0.0, 0.0)))))"#,
             )
             .expect("parses");
         assert_eq!(lock.clock.arrangement, ClockArrangement::Stacked);
         assert_eq!(lock.clock.stretch, 2.4);
+        assert_eq!(lock.clock.font, ClockFont::Tall);
+        assert_eq!(lock.clock.lighting, ClockLighting::Glow);
         assert!(lock.clock.frame.is_warped());
         assert_eq!(lock.clock.frame.scale, 1.0);
         assert!(lock.clock.morph_digits);
