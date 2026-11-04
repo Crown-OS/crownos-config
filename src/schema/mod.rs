@@ -43,6 +43,7 @@ pub mod bluetooth;
 pub mod clipboard;
 pub mod compositor;
 pub mod display;
+pub mod files;
 pub mod glass;
 pub mod input;
 pub mod keybinds;
@@ -66,6 +67,7 @@ pub use compositor::{
     WindowRule, WorkspaceMode,
 };
 pub use display::{Display, DisplayKey};
+pub use files::{Files, FilesKey, SortKey, TagColor, ViewMode};
 pub use glass::{EdgeGlow, Glass, GlassKey};
 pub use input::{Input, InputKey};
 pub use keybinds::{Binding, Keybinds, KeybindsKey};
@@ -130,6 +132,7 @@ by_name!(
     Clipboard,
     Compositor,
     Display,
+    Files,
     Input,
     Keybinds,
     Lock,
