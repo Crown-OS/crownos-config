@@ -56,6 +56,7 @@ pub mod recorder;
 pub mod screenshot;
 pub mod sound;
 pub mod theme;
+pub mod voice;
 pub mod wifi;
 
 pub use appearance::{
@@ -82,12 +83,13 @@ pub use lock::{
 pub use notification::{Notifications, NotificationsKey};
 pub use plugins::{Decision, Plugins, PluginsKey};
 pub use power::{Power, PowerKey, PowerProfile};
-pub use recorder::{Recorder, RecorderEnhancement, RecorderFormat, RecorderKey};
+pub use recorder::{Recorder, RecorderFormat, RecorderKey};
 pub use screenshot::{
     ImageFormat, RecordingQuality, Screenshot, ScreenshotKey, VideoCodec, VideoContainer,
 };
 pub use sound::{Sound, SoundKey};
 pub use theme::{AccentGradient, Font, Radii, Theme, ThemeKey};
+pub use voice::{Voice, VoiceBackend, VoiceEnhancement, VoiceKey};
 pub use wifi::{Wifi, WifiKey};
 
 use crate::patch::{DynSection, PatchError, edit_typed, read_typed};
@@ -143,8 +145,10 @@ by_name!(
     Notifications,
     Plugins,
     Power,
+    Recorder,
     Screenshot,
     Sound,
     Theme,
+    Voice,
     Wifi,
 );

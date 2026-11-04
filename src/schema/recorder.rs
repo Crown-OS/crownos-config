@@ -5,6 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::voice::VoiceEnhancement;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum RecorderFormat {
     /// Opus in Ogg at voice bit rate.
@@ -14,21 +16,12 @@ pub enum RecorderFormat {
     Flac,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum RecorderEnhancement {
-    Off,
-    Light,
-    #[default]
-    NoiseSuppression,
-    StudioVoice,
-}
-
 crate::section! {
     pub struct Recorder in "recorder", keys RecorderKey {
         pub format as Format: RecorderFormat = RecorderFormat::Opus,
 
         /// The live enhancement new recordings start with, and the default of "Enhance".
-        pub enhancement as Enhancement: RecorderEnhancement = RecorderEnhancement::NoiseSuppression,
+        pub enhancement as Enhancement: VoiceEnhancement = VoiceEnhancement::NoiseSuppression,
 
         /// The PipeWire node name of the microphone. `None` is the system default.
         pub input as Input: Option<String> = None,
@@ -43,7 +36,7 @@ mod tests {
     fn round_trips_through_ron() {
         let recorder = Recorder {
             format: RecorderFormat::Flac,
-            enhancement: RecorderEnhancement::StudioVoice,
+            enhancement: VoiceEnhancement::StudioVoice,
             input: Some("alsa_input.usb".into()),
         };
         let text = ron::ser::to_string_pretty(&recorder, Default::default())
