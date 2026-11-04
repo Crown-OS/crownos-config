@@ -37,11 +37,16 @@ mod tests {
     use crate::keybind::Mods;
 
     #[test]
-    fn the_launchpad_opens_on_super_ctrl_by_default() {
-        let keybinds = Keybinds::default();
+    fn the_launchpad_opens_on_super_space_by_default() {
+        assert_eq!(Keybinds::default().launcher, Keybind::SUPER_SPACE);
+    }
+
+    #[test]
+    fn dictation_listens_on_a_modifier_only_chord_by_default() {
+        let dictation = Keybinds::default().dictation;
 
         assert_eq!(
-            keybinds.launcher.mods,
+            dictation.mods,
             Mods {
                 meta: true,
                 ctrl: true,
@@ -50,7 +55,7 @@ mod tests {
             }
         );
         assert_eq!(
-            keybinds.launcher.key, None,
+            dictation.key, None,
             "a modifier-only chord cannot collide with an application's own bindings"
         );
     }
@@ -58,22 +63,23 @@ mod tests {
     /// The written form is what lands in the file and what the settings panel
     /// shows, and modifiers print in one fixed order however they were typed.
     #[test]
-    fn the_default_is_written_super_ctrl_whichever_way_it_is_spelled() {
-        assert_eq!(Keybinds::default().launcher.to_string(), "Super+Ctrl");
+    fn the_dictation_chord_is_written_super_ctrl_whichever_way_it_is_spelled() {
+        assert_eq!(Keybinds::default().dictation.to_string(), "Super+Ctrl");
         assert_eq!(
             "Ctrl+Super".parse::<Keybind>().unwrap(),
-            Keybinds::default().launcher
+            Keybinds::default().dictation
         );
     }
 
     #[test]
-    fn the_shortcut_is_written_as_a_string() {
+    fn the_shortcuts_are_written_as_strings() {
         let text = ron::ser::to_string_pretty(&Keybinds::default(), Default::default())
             .expect("serialise keybinds section");
 
         assert!(
-            text.contains("launcher: \"Super+Ctrl\""),
-            "the shortcut should be hand-editable, got:\n{text}"
+            text.contains("launcher: \"Super+Space\"")
+                && text.contains("dictation: \"Super+Ctrl\""),
+            "the shortcuts should be hand-editable, got:\n{text}"
         );
         assert_eq!(
             ron::from_str::<Keybinds>(&text).expect("parse back"),
