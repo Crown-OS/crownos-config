@@ -1,4 +1,3 @@
-
 crate::section! {
     pub struct Display in "display", keys DisplayKey {
         pub brightness as Brightness: f64 = 80.0,

@@ -165,7 +165,9 @@ impl Theme {
 
     /// An overridden token for the active mode, parsed.
     pub fn color(&self, dark_mode: bool, token: &str) -> Option<[f32; 4]> {
-        self.slots(dark_mode).get(token).and_then(|hex| parse_hex(hex))
+        self.slots(dark_mode)
+            .get(token)
+            .and_then(|hex| parse_hex(hex))
     }
 }
 
@@ -180,7 +182,10 @@ mod tests {
             .expect("legacy shape");
         assert_eq!(theme.dark["surface.bg"], "#101010");
         assert_eq!(theme.radii, Radii::default());
-        assert_eq!(theme.accent.map(|accent| accent.end).as_deref(), Some("#6d48e8"));
+        assert_eq!(
+            theme.accent.map(|accent| accent.end).as_deref(),
+            Some("#6d48e8")
+        );
     }
 
     #[test]

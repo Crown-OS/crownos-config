@@ -40,6 +40,7 @@
 pub mod appearance;
 pub mod bar;
 pub mod bluetooth;
+pub mod camera;
 pub mod clipboard;
 pub mod compositor;
 pub mod display;
@@ -51,6 +52,7 @@ pub mod lock;
 pub mod notification;
 pub mod plugins;
 pub mod power;
+pub mod recorder;
 pub mod screenshot;
 pub mod sound;
 pub mod theme;
@@ -61,6 +63,7 @@ pub use appearance::{
 };
 pub use bar::{Bar, BarKey, BarPosition};
 pub use bluetooth::{Bluetooth, BluetoothKey};
+pub use camera::{BackgroundEffect, Camera, CameraKey, CaptureMode};
 pub use clipboard::{Clipboard, ClipboardKey};
 pub use compositor::{
     Compositor, CompositorKey, GamingOptions, OutputLayout, OutputSetting, OutputTransform, Vrr,
@@ -79,6 +82,7 @@ pub use lock::{
 pub use notification::{Notifications, NotificationsKey};
 pub use plugins::{Decision, Plugins, PluginsKey};
 pub use power::{Power, PowerKey, PowerProfile};
+pub use recorder::{Recorder, RecorderEnhancement, RecorderFormat, RecorderKey};
 pub use screenshot::{
     ImageFormat, RecordingQuality, Screenshot, ScreenshotKey, VideoCodec, VideoContainer,
 };

@@ -190,8 +190,7 @@ pub struct OutputLayout {
 impl OutputLayout {
     /// Whether this arrangement is the one for the monitors now plugged in.
     pub fn matches(&self, present: &[String]) -> bool {
-        self.heads.len() == present.len()
-            && self.heads.iter().all(|head| present.contains(head))
+        self.heads.len() == present.len() && self.heads.iter().all(|head| present.contains(head))
     }
 
     pub fn position_of(&self, name: &str) -> Option<(i32, i32)> {

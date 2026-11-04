@@ -3,6 +3,8 @@
 //!
 //! The consumer is crownos-files, which follows this file while it runs.
 
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -75,6 +77,9 @@ crate::section! {
 
         /// The tags offered in the tag menu and the color each is drawn in.
         pub tags as Tags: Vec<TagColor> = default_tags(),
+
+        /// Folders pinned to the sidebar, in the order they are listed.
+        pub pinned as Pinned: Vec<PathBuf> = Vec::new(),
     }
 }
 
