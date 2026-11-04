@@ -25,8 +25,9 @@ crate::section! {
         /// the setup that was already there.
         pub dictation_enabled as DictationEnabled: bool = true,
 
-        /// Which microphone to record from, by the name the audio host gives
-        /// it, or `None` for whatever the system's default input is.
+        /// Which microphone to record from, by its PipeWire node name (such as
+        /// `alsa_input.pci-0000_00_1f.3.analog-stereo`, as `audio::sources()` lists
+        /// it), or `None` for whatever the system's default input is.
         ///
         /// `None` is the honest default: the system default follows the user's
         /// headset in and out, and pinning a name is the exception rather than
