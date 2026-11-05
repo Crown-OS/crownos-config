@@ -37,6 +37,7 @@
 //! }
 //! ```
 
+pub mod android;
 pub mod appearance;
 pub mod bar;
 pub mod bluetooth;
@@ -59,6 +60,7 @@ pub mod theme;
 pub mod voice;
 pub mod wifi;
 
+pub use android::{Android, AndroidKey};
 pub use appearance::{
     AccentColor, AnimationProfile, Appearance, AppearanceKey, CloseAnimation, MinimizeAnimation,
 };
@@ -132,6 +134,7 @@ macro_rules! by_name {
 }
 
 by_name!(
+    Android,
     Appearance,
     Bar,
     Bluetooth,
