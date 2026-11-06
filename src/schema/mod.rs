@@ -76,9 +76,8 @@ pub use glass::{EdgeGlow, Glass, GlassKey};
 pub use input::{Input, InputKey};
 pub use keybinds::{Binding, Keybinds, KeybindsKey};
 pub use lock::{
-    Anchor, ClockArrangement, ClockFont, ClockFrame, ClockLighting, ClockLook, ClockStyle, Easing,
-    Edge, Effect, Lock, LockBackground, LockKey, LockLayout, LockSlotPosition, LockTransitions,
-    Placement, SlotPlacement, Transition,
+    Anchor, ClockFont, ClockFrame, ClockLayout, ClockLook, Lock, LockBackground, LockKey,
+    LockSlotPosition, Placement, SlotPlacement,
 };
 pub use notification::{Notifications, NotificationsKey};
 pub use plugins::{Decision, Plugins, PluginsKey};

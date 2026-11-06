@@ -2,38 +2,28 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Where the hours, the minutes and the date sit against each other.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum ClockArrangement {
-    /// Hours and minutes side by side, with the separator between.
+pub enum ClockLayout {
+    /// Hours and minutes side by side across the middle, under the date.
     #[default]
-    Row,
-    /// Hours over minutes, without the separator.
+    Centered,
+    /// Hours and minutes side by side at the left, over the date.
+    Left,
+    /// Hours over minutes at the left, the date beside the hours.
     Stacked,
 }
 
 /// The typeface the clock's digits are drawn in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum ClockFont {
-    /// The lock's font family, or the theme's.
+    /// Condensed monoline digits with round bowls.
     #[default]
-    Theme,
-    /// Monoline digits with round bowls that stay round however tall they stand.
-    Tall,
-    /// Monoline digits with squared bowls, for a narrower, denser clock.
-    Narrow,
-    /// High-contrast digits: heavy stems, hairline curves and ball terminals.
+    Sans,
+    /// Monoline digits with a grotesque's squarer bowls.
+    Grotesk,
+    /// High-contrast digits: heavy stems and hairline curves.
     Serif,
-}
-
-/// Light the digits are drawn with.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum ClockLighting {
-    #[default]
-    None,
-    /// A soft halo of the digits' own colour around them.
-    Glow,
-    /// A band of light sweeping across the digits.
-    Sheen,
 }
 
 /// Where the clock sits and how it is bent, as the Settings handles leave it.
@@ -78,46 +68,60 @@ impl ClockFrame {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ClockLook {
-    pub arrangement: ClockArrangement,
+    pub layout: ClockLayout,
     pub font: ClockFont,
-    pub lighting: ClockLighting,
-    /// 100 to 900; `None` keeps the clock style's weight.
-    pub weight: Option<u16>,
-    /// How much taller than the font draws them the digits stand.
+    /// From hairline, 100, to heavy, 900.
+    pub weight: f32,
+    /// How much taller than the font draws them the digits stand: stems
+    /// lengthen while bowls stay round and strokes keep their width.
     pub stretch: f32,
-    /// Digits of frosted glass showing the blurred background through them.
-    pub glass: bool,
+    /// From frosted glass showing the background through the digits, 0, to
+    /// solid white, 1.
+    pub whiteness: f32,
+    /// Draws the separator between side-by-side hours and minutes.
+    pub colon: bool,
     /// Strength of the shadow under the digits, `0.0..=1.0`.
     pub shadow: f32,
-    /// A digit that changes blurs out as the new one blurs in.
-    pub morph_digits: bool,
     pub frame: ClockFrame,
-    /// A picture of the background's subject on a transparent ground, framed
-    /// like the background, drawn over the clock so the subject stands in
-    /// front of it.
-    pub depth: Option<String>,
+    /// Stands the background's subject, cut out of it on the fly, in front of
+    /// the clock.
+    pub depth: bool,
 }
 
 impl Default for ClockLook {
     fn default() -> Self {
         Self {
-            arrangement: ClockArrangement::Row,
-            font: ClockFont::Theme,
-            lighting: ClockLighting::None,
-            weight: None,
-            stretch: 1.0,
-            glass: false,
+            layout: ClockLayout::Centered,
+            font: ClockFont::Sans,
+            weight: Self::DEFAULT_WEIGHT,
+            stretch: Self::DEFAULT_STRETCH,
+            whiteness: Self::DEFAULT_WHITENESS,
+            colon: true,
             shadow: 0.0,
-            morph_digits: true,
             frame: ClockFrame::default(),
-            depth: None,
+            depth: true,
         }
     }
 }
 
 impl ClockLook {
     pub const MIN_STRETCH: f32 = 1.0;
-    pub const MAX_STRETCH: f32 = 3.0;
-    pub const MIN_WEIGHT: u16 = 100;
-    pub const MAX_WEIGHT: u16 = 900;
+    pub const MAX_STRETCH: f32 = 5.0;
+    pub const DEFAULT_STRETCH: f32 = 3.5;
+    pub const MIN_WEIGHT: f32 = 100.0;
+    pub const MAX_WEIGHT: f32 = 900.0;
+    pub const DEFAULT_WEIGHT: f32 = 700.0;
+    pub const DEFAULT_WHITENESS: f32 = 0.5;
+
+    pub fn clamped_weight(&self) -> f32 {
+        self.weight.clamp(Self::MIN_WEIGHT, Self::MAX_WEIGHT)
+    }
+
+    pub fn clamped_stretch(&self) -> f32 {
+        self.stretch.clamp(Self::MIN_STRETCH, Self::MAX_STRETCH)
+    }
+
+    pub fn clamped_whiteness(&self) -> f32 {
+        self.whiteness.clamp(0.0, 1.0)
+    }
 }

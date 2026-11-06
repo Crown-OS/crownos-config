@@ -5,32 +5,14 @@
 //! `crownos_plugin_host_v1`.
 
 mod clock;
-mod transition;
 
 use serde::{Deserialize, Serialize};
 
-pub use clock::{ClockArrangement, ClockFont, ClockFrame, ClockLighting, ClockLook};
-pub use transition::{Easing, Edge, Effect, LockTransitions, Transition};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum ClockStyle {
-    #[default]
-    Classic,
-    Large,
-    Minimal,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
-pub enum LockLayout {
-    #[default]
-    Center,
-    Left,
-    Bottom,
-}
+pub use clock::{ClockFont, ClockFrame, ClockLayout, ClockLook};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum LockBackground {
-    /// The user's desktop wallpaper, blurred.
+    /// The user's desktop wallpaper.
     #[default]
     Desktop,
     /// Any image the user can read.
@@ -84,22 +66,15 @@ pub struct SlotPlacement {
 
 crate::section! {
     pub struct Lock in "lock", keys LockKey {
-        pub clock_style as ClockStyleKey: ClockStyle = ClockStyle::Classic,
         pub clock as ClockKey: ClockLook = ClockLook::default(),
         /// strftime pattern.
         pub time_format as TimeFormat: String = "%H:%M".to_owned(),
-        pub date_format as DateFormat: String = "%A, %e %B".to_owned(),
-        /// A system-installed font family; `None` keeps the default.
-        pub font as Font: Option<String> = None,
-        pub layout as Layout: LockLayout = LockLayout::Center,
+        pub date_format as DateFormat: String = "%a, %b %-d".to_owned(),
         pub background as Background: LockBackground = LockBackground::Desktop,
         /// Darkening over the background, `0.0..=1.0`.
-        pub dim as Dim: f32 = 0.25,
-        /// Blur strength as a fraction of the desktop blur.
-        pub blur as BlurKey: f32 = 1.0,
+        pub dim as Dim: f32 = 0.0,
         pub auth_field as AuthField: Placement = Placement::default(),
         pub slots as Slots: Vec<SlotPlacement> = Vec::new(),
-        pub transitions as Transitions: LockTransitions = LockTransitions::default(),
         /// Shows the user's name above the password field.
         pub show_user as ShowUser: bool = true,
         /// Seconds without input before the prompt gives way to the clock again.
@@ -144,40 +119,36 @@ mod tests {
                 .map(|slot| slot.position),
             Some(LockSlotPosition::Bottom)
         );
-        assert_eq!(lock.dim, 0.25);
+        assert_eq!(lock.dim, 0.0);
     }
 
     #[test]
     fn a_partial_clock_keeps_the_other_defaults() {
         let lock: Lock = crate::parser::options()
             .from_str(
-                r#"(clock: (arrangement: Stacked, font: Tall, lighting: Glow, stretch: 2.4, frame: (warp: ((0.0, 0.0), (0.1, -0.2), (0.0, 0.0), (0.0, 0.0)))))"#,
+                r#"(clock: (layout: Stacked, font: Serif, weight: 250.5, stretch: 2.4, frame: (warp: ((0.0, 0.0), (0.1, -0.2), (0.0, 0.0), (0.0, 0.0)))))"#,
             )
             .expect("parses");
-        assert_eq!(lock.clock.arrangement, ClockArrangement::Stacked);
+        assert_eq!(lock.clock.layout, ClockLayout::Stacked);
+        assert_eq!(lock.clock.font, ClockFont::Serif);
+        assert_eq!(lock.clock.weight, 250.5);
         assert_eq!(lock.clock.stretch, 2.4);
-        assert_eq!(lock.clock.font, ClockFont::Tall);
-        assert_eq!(lock.clock.lighting, ClockLighting::Glow);
         assert!(lock.clock.frame.is_warped());
         assert_eq!(lock.clock.frame.scale, 1.0);
-        assert!(lock.clock.morph_digits);
+        assert_eq!(lock.clock.whiteness, ClockLook::DEFAULT_WHITENESS);
+        assert!(lock.clock.depth);
     }
 
     #[test]
-    fn a_partial_transition_keeps_the_other_defaults() {
-        let lock: Lock = crate::parser::options()
-            .from_str(
-                r#"(transitions: (reveal: (effects: [Slide(from: Top, distance: 30.0)], duration_ms: 200)))"#,
-            )
-            .expect("parses");
-        assert_eq!(
-            lock.transitions.reveal.effects,
-            [Effect::Slide {
-                from: Edge::Top,
-                distance: 30.0
-            }]
-        );
-        assert_eq!(lock.transitions.reveal.easing, Easing::EaseOut);
-        assert_eq!(lock.transitions.appear, LockTransitions::default().appear);
+    fn out_of_range_looks_clamp() {
+        let look = ClockLook {
+            weight: 2000.0,
+            stretch: 0.2,
+            whiteness: -1.0,
+            ..ClockLook::default()
+        };
+        assert_eq!(look.clamped_weight(), ClockLook::MAX_WEIGHT);
+        assert_eq!(look.clamped_stretch(), ClockLook::MIN_STRETCH);
+        assert_eq!(look.clamped_whiteness(), 0.0);
     }
 }
