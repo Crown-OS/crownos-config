@@ -96,13 +96,37 @@ pub struct WindowRule {
     pub vrr: Option<bool>,
 }
 
-/// Latency trade-offs a desktop would not make by default.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+/// Latency trade-offs for games.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GamingOptions {
-    /// Let a fullscreen window that asks for it tear instead of waiting for
-    /// vblank.
+    /// Let a fullscreen window that asks for it, or that a rule names, tear
+    /// instead of waiting for vblank.
     pub allow_tearing: bool,
+}
+
+impl Default for GamingOptions {
+    fn default() -> Self {
+        Self {
+            allow_tearing: true,
+        }
+    }
+}
+
+/// Proton titles: xwayland-satellite hands their `WM_CLASS`, `steam_app_<id>`,
+/// over as the app id.
+const STEAM_GAME_APP_ID: &str = "^steam_app_";
+
+/// What a fresh install ships: Steam games may tear, and get a variable refresh
+/// rate even when windowed. Proton games are X11 windows, which cannot ask for
+/// either.
+fn default_window_rules() -> Vec<WindowRule> {
+    vec![WindowRule {
+        app_id: Some(STEAM_GAME_APP_ID.to_owned()),
+        tearing: Some(true),
+        vrr: Some(true),
+        ..WindowRule::default()
+    }]
 }
 
 /// When a display runs at a variable refresh rate.
@@ -110,12 +134,12 @@ pub struct GamingOptions {
 /// Tri-state rather than a bool because "always on" and "on when it helps" are
 /// genuinely different: some panels flicker at low refresh on a static
 /// desktop, so `OnDemand` turns it on only while a fullscreen window is the
-/// only thing on the output.
+/// only thing on the output, or a game is visible.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Vrr {
-    #[default]
     Off,
     On,
+    #[default]
     OnDemand,
 }
 
@@ -209,7 +233,7 @@ crate::section! {
         /// refused unless this says otherwise.
         pub allow_overlapping_outputs as AllowOverlappingOutputs: bool = false,
 
-        pub window_rules as WindowRules: Vec<WindowRule> = Vec::new(),
+        pub window_rules as WindowRules: Vec<WindowRule> = default_window_rules(),
         pub outputs as Outputs: Vec<OutputSetting> = Vec::new(),
         pub output_layouts as OutputLayouts: Vec<OutputLayout> = Vec::new(),
         pub startup as Startup: Vec<String> = Vec::new(),
@@ -287,6 +311,35 @@ mod tests {
         let text = ron::ser::to_string(&config).expect("serialises");
         let parsed: Compositor = ron::from_str(&text).expect("deserialises");
         assert_eq!(parsed, config);
+    }
+
+    #[test]
+    fn displays_default_to_vrr_on_demand() {
+        assert_eq!(Vrr::default(), Vrr::OnDemand);
+    }
+
+    #[test]
+    fn steam_games_may_tear_and_use_vrr_by_default() {
+        let defaults = Compositor::default();
+        let steam = defaults
+            .window_rules
+            .iter()
+            .find(|rule| rule.app_id.as_deref() == Some(STEAM_GAME_APP_ID))
+            .expect("the default rules name Steam games");
+
+        assert_eq!((steam.tearing, steam.vrr), (Some(true), Some(true)));
+        assert!(
+            defaults.gaming.allow_tearing,
+            "the rule's tearing is inert without the global switch"
+        );
+    }
+
+    #[test]
+    fn a_file_without_gaming_options_still_allows_tearing() {
+        let parsed: Compositor = crate::parser::options()
+            .from_str("(gaming: ())")
+            .expect("parses");
+        assert!(parsed.gaming.allow_tearing);
     }
 
     #[test]
