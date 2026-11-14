@@ -1,0 +1,13 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Workspace automation: config-docs renders the settings reference from the schema"
+
+[dependencies]
+crownos-config = { path = "..", default-features = false }
+anyhow = "1"
+proc-macro2 = { version = "1", features = ["span-locations"] }
+quote = "1"
+syn = { version = "2", features = ["full", "extra-traits", "parsing", "printing"] }
