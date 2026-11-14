@@ -37,6 +37,7 @@
 //! }
 //! ```
 
+pub mod agents;
 pub mod appearance;
 pub mod bar;
 pub mod bluetooth;
@@ -56,9 +57,11 @@ pub mod recorder;
 pub mod screenshot;
 pub mod sound;
 pub mod theme;
+pub mod visual_context;
 pub mod voice;
 pub mod wifi;
 
+pub use agents::{AccessDecision, Agents, AgentsKey};
 pub use appearance::{
     AccentColor, AnimationProfile, Appearance, AppearanceKey, CloseAnimation, MinimizeAnimation,
 };
@@ -88,6 +91,7 @@ pub use screenshot::{
 };
 pub use sound::{Sound, SoundKey};
 pub use theme::{AccentGradient, Font, Radii, Theme, ThemeKey};
+pub use visual_context::{VisualContext, VisualContextKey};
 pub use voice::{Voice, VoiceBackend, VoiceEnhancement, VoiceKey};
 pub use wifi::{Wifi, WifiKey};
 

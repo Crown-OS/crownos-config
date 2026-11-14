@@ -4,6 +4,7 @@ Every setting is one RON file under `~/.config/crownos/`, named after its sectio
 
 | Section | File | About | Read by |
 |---|---|---|---|
+| [agents](agents.md) | `agents.ron` | AI agents on this desktop: which programs may drive it, and which applications may show their UI to agents. | The consumer is [crownpositor], which reads this file live. |
 | [appearance](appearance.md) | `appearance.ron` |  | every CrownOS app, through crownos-config |
 | [bar](bar.md) | `bar.ron` | The status bar: where it sits, how it is shaped and what is on it. | every CrownOS app, through crownos-config |
 | [bluetooth](bluetooth.md) | `bluetooth.ron` |  | every CrownOS app, through crownos-config |
@@ -23,5 +24,6 @@ Every setting is one RON file under `~/.config/crownos/`, named after its sectio
 | [screenshot](screenshot.md) | `screenshot.ron` | Screenshots and screen recordings: where they land and how they are encoded. | The consumer is crownos-screenshot, which reads this file each time it runs. |
 | [sound](sound.md) | `sound.ron` |  | every CrownOS app, through crownos-config |
 | [theme](theme.md) | `theme.ron` | Semantic design tokens shared by every CrownOS surface. | every CrownOS app, through crownos-config |
+| [visual_context](visual_context.md) | `visual_context.ron` | The visual context engine: what it may look at and how long it remembers. | Two consumers: [crownpositor] reads the exclusion rules live and enforces them in the compositor, so a window stays out of captures even when the engine is not running; [crown-contextd] reads everything else. |
 | [voice](voice.md) | `voice.ron` | Voice enhancement for every app's microphone. | The consumers are crown-voiced, which follows this file live, and the settings panel's Voice page, which writes it. |
 | [wifi](wifi.md) | `wifi.ron` |  | every CrownOS app, through crownos-config |

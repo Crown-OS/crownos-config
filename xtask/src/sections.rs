@@ -5,12 +5,14 @@
 
 use crownos_config::DynSection;
 use crownos_config::schema::{
-    Appearance, Bar, Bluetooth, Camera, Clipboard, Compositor, Display, Files, Glass, Input,
-    Keybinds, Lock, Notifications, Plugins, Power, Recorder, Screenshot, Sound, Theme, Voice, Wifi,
+    Agents, Appearance, Bar, Bluetooth, Camera, Clipboard, Compositor, Display, Files, Glass,
+    Input, Keybinds, Lock, Notifications, Plugins, Power, Recorder, Screenshot, Sound, Theme,
+    VisualContext, Voice, Wifi,
 };
 
 pub(crate) fn defaults() -> Vec<Box<dyn DynSection>> {
     vec![
+        Box::new(Agents::default()),
         Box::new(Appearance::default()),
         Box::new(Bar::default()),
         Box::new(Bluetooth::default()),
@@ -30,6 +32,7 @@ pub(crate) fn defaults() -> Vec<Box<dyn DynSection>> {
         Box::new(Screenshot::default()),
         Box::new(Sound::default()),
         Box::new(Theme::default()),
+        Box::new(VisualContext::default()),
         Box::new(Voice::default()),
         Box::new(Wifi::default()),
     ]
