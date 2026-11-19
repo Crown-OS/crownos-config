@@ -24,6 +24,16 @@ pub enum ClockFont {
     Grotesk,
     /// High-contrast digits: heavy stems and hairline curves.
     Serif,
+    /// Condensed square monoline digits, their bars set low, after Marisa
+    /// Passos's Higher.
+    Higher,
+    /// Heavy block digits with chamfered corners, after Aldo the Apache.
+    Apache,
+    /// After Eotype's Boston.
+    Boston,
+    /// Condensed monoline digits with chamfered corners, after Tribo, which
+    /// draws no digits of its own.
+    Tribo,
 }
 
 /// Where the clock sits and how it is bent, as the Settings handles leave it.
