@@ -29,9 +29,14 @@ crate::section! {
 }
 
 fn default_excluded_apps() -> Vec<String> {
-    ["org.keepassxc.KeePassXC", "org.gnome.seahorse.Application", "1password", "bitwarden"]
-        .map(str::to_owned)
-        .to_vec()
+    [
+        "org.keepassxc.KeePassXC",
+        "org.gnome.seahorse.Application",
+        "1password",
+        "bitwarden",
+    ]
+    .map(str::to_owned)
+    .to_vec()
 }
 
 fn default_private_titles() -> Vec<String> {

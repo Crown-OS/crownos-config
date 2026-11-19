@@ -2,8 +2,8 @@
 //!
 //! The section is called `input` rather than `dictation` because it is the file
 //! behind the settings panel's *Input* page, and that page is the home for
-//! anything that turns a person into text — the same way macOS files Dictation
-//! under Keyboard → Text Input. Dictation is simply the only thing in it today,
+//! anything that turns a person into text.
+//! Dictation is simply the only thing in it today,
 //! which is why every field is prefixed: a later `input.ron` gaining key-repeat
 //! or an input-method setting should not have to rename what is already there.
 //!
