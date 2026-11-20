@@ -70,7 +70,7 @@ pub use key::Key;
 pub use keybind::{KeyCode, Keybind, Mods};
 pub use parser::{load, save};
 pub use patch::{DynSection, PatchError, load_strict, read_key, write_keys};
-pub use util::{hash_bytes, last_written, path_for, record_written};
+pub use util::{forget_written, hash_bytes, last_written, path_for, record_written};
 pub use watch::{Subscription, subscribe, subscribe_key, subscribe_typed};
 
 /// Every settings type, also reachable as `crownos_config::schema::*`.

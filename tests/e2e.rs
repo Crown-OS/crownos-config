@@ -122,14 +122,20 @@ fn check_watcher() {
     check_own_save_is_suppressed(&rx);
     check_partial_write_is_dropped(&rx);
     check_external_write_is_delivered(&rx);
+    check_identical_external_writes_deliver_once(&rx);
+    check_external_write_equal_to_old_save_is_delivered(&rx);
     check_dropped_subscription_stops_delivering(subscription, &rx);
 }
 
-fn check_own_save_is_suppressed(rx: &Receiver<Sound>) {
-    let mine = Sound {
+fn own_sound() -> Sound {
+    Sound {
         output_volume: 11.0,
         ..Sound::default()
-    };
+    }
+}
+
+fn check_own_save_is_suppressed(rx: &Receiver<Sound>) {
+    let mine = own_sound();
     save(Sound::SECTION, &mine).expect("save sound");
 
     assert!(
@@ -160,6 +166,29 @@ fn check_external_write_is_delivered(rx: &Receiver<Sound>) {
         .recv_timeout(DELIVERED)
         .expect("watcher should deliver an external edit");
     assert_eq!(received, theirs);
+}
+
+/// The same bytes written twice in a row reach the subscriber once.
+fn check_identical_external_writes_deliver_once(rx: &Receiver<Sound>) {
+    let bytes = read(Sound::SECTION);
+    write(Sound::SECTION, &bytes);
+
+    assert!(
+        rx.recv_timeout(SILENT).is_err(),
+        "identical bytes must not be delivered twice"
+    );
+}
+
+/// After a different external write was delivered, an external write that
+/// equals this process's earlier save is a real change and must be delivered.
+fn check_external_write_equal_to_old_save_is_delivered(rx: &Receiver<Sound>) {
+    let mine = own_sound();
+    write(Sound::SECTION, to_ron(&mine).as_bytes());
+
+    let received = rx
+        .recv_timeout(DELIVERED)
+        .expect("bytes equal to an old save must be delivered after another write");
+    assert_eq!(received, mine);
 }
 
 fn check_dropped_subscription_stops_delivering(subscription: Subscription, rx: &Receiver<Sound>) {

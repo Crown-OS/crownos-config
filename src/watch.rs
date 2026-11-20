@@ -23,7 +23,9 @@
 //!
 //! Every candidate event ends in the same place: read the file, hash it, and
 //! deliver only if that hash differs from both the last hash delivered for the
-//! section and the last hash [`save`](crate::save) wrote. That single check
+//! section and the last hash [`save`](crate::save) wrote. A delivery with other
+//! bytes ends the echo window, so a later write that equals an old save is
+//! delivered. That single check
 //! collapses duplicate inotify events, no-op writes, and this process's own
 //! saves.
 //!
@@ -41,7 +43,7 @@ use std::sync::{Arc, LazyLock, Mutex};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::de::DeserializeOwned;
 
-use crate::util::{hash_bytes, last_written, path_for};
+use crate::util::{forget_written, hash_bytes, last_written, path_for};
 use crate::{Key, config_dir};
 
 type Callback = Arc<dyn Fn(Vec<u8>) + Send + Sync>;
@@ -121,9 +123,13 @@ fn deliver(section: &str) {
         let mut registry = lock_registry();
 
         // Echo: this is the file we just wrote ourselves.
-        if last_written(section) == Some(hash) {
-            registry.last_delivered.insert(section.to_owned(), hash);
-            return;
+        match last_written(section) {
+            Some(written) if written == hash => {
+                registry.last_delivered.insert(section.to_owned(), hash);
+                return;
+            }
+            Some(_) => forget_written(section),
+            None => {}
         }
         // Duplicate event, or a write that produced identical bytes.
         if registry.last_delivered.get(section) == Some(&hash) {

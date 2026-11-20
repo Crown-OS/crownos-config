@@ -36,6 +36,15 @@ pub fn record_written(section: &str, hash: u64) {
     map.insert(section.to_owned(), hash);
 }
 
+/// Forget the hash [`save`](crate::save) recorded for `section`, so the next
+/// write of any bytes counts as an outside change.
+pub fn forget_written(section: &str) {
+    let mut map = LAST_WRITTEN
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    map.remove(section);
+}
+
 /// Hash of the bytes this process last wrote for `section`. `None` means
 /// whatever is on disk came from somewhere else.
 pub fn last_written(section: &str) -> Option<u64> {
