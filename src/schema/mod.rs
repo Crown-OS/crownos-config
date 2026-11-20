@@ -51,6 +51,7 @@ pub mod input;
 pub mod keybinds;
 pub mod lock;
 pub mod notification;
+pub mod output;
 pub mod plugins;
 pub mod power;
 pub mod recorder;
@@ -71,7 +72,7 @@ pub use camera::{BackgroundEffect, Camera, CameraKey, CaptureMode};
 pub use clipboard::{Clipboard, ClipboardKey};
 pub use compositor::{
     Compositor, CompositorKey, GamingOptions, OutputLayout, OutputSetting, OutputTransform, Vrr,
-    WindowRule, WorkspaceMode,
+    WindowRule, WorkspaceMode, WorkspaceScope,
 };
 pub use display::{Display, DisplayKey};
 pub use files::{Files, FilesKey, SortKey, TagColor, ViewMode};
@@ -83,6 +84,7 @@ pub use lock::{
     LockSlotPosition, Placement, SlotPlacement,
 };
 pub use notification::{Notifications, NotificationsKey};
+pub use output::{ShellRole, output_identity};
 pub use plugins::{Decision, Plugins, PluginsKey};
 pub use power::{Power, PowerKey, PowerProfile};
 pub use recorder::{Recorder, RecorderFormat, RecorderKey};

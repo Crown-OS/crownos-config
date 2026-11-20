@@ -6,7 +6,7 @@
 
 | Key | Type | Default | What it does |
 |---|---|---|---|
-| `brightness` | `f64` | `80.0` |  |
+| `brightness` | `f64` | `80.0` | Deprecated: per-output brightness replaces this value. Kept so old files load. |
 | `night_light` | `bool` | `false` |  |
 | `night_light_warmth` | `f64` | `50.0` |  |
 

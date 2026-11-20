@@ -21,9 +21,11 @@ internal types move around.
 | Key | Type | Default | What it does |
 |---|---|---|---|
 | `layout` | `WorkspaceMode` | `Tiling` |  |
+| `workspace_scope` | `WorkspaceScope` | `PerMonitor` | Whether a workspace switch acts on the focused output or on all outputs. |
 | `focus_follows_mouse` | `bool` | `false` |  |
 | `allow_overlapping_outputs` | `bool` | `false` | Kanshi-style configurations sometimes overlap outputs by a pixel on purpose. The compositor's model cannot represent that, so it is refused unless this says otherwise. |
 | `window_rules` | `Vec<WindowRule>` | see below |  |
+| `primary_output` | `Option<String>` | `None` | The output that shows the dock and notifications by default, named like `OutputSetting::name`. When unset, the compositor selects one. |
 | `outputs` | `Vec<OutputSetting>` | `[]` |  |
 | `output_layouts` | `Vec<OutputLayout>` | `[]` |  |
 | `startup` | `Vec<String>` | `[]` |  |
@@ -45,6 +47,15 @@ How a workspace arranges the windows on it.
 |---|---|
 | `Tiling` (default) | The compositor owns every window's geometry. |
 | `Floating` | Windows keep the size and position they were given, and wear a titlebar. |
+
+### `WorkspaceScope`
+
+Which outputs a workspace switch acts on.
+
+| Variant | What it means |
+|---|---|
+| `PerMonitor` (default) | Each output switches its workspaces alone; a switch acts on the focused output. |
+| `Shared` | A switch acts on all outputs together and shows the same workspace index on each. |
 
 ### `WindowRule`
 
@@ -88,8 +99,13 @@ Matched at a window's first buffer commit, the earliest point `app_id`,
 | `hdr` | `Option<bool>` | Drive the panel in BT.2100. Refused when its EDID claims no HDR. |
 | `sdr_reference_luminance` | `Option<u32>` | cd/m² that SDR white maps to in HDR mode. BT.2408 says 203. |
 | `icc_profile` | `Option<String>` | Path to this output's ICC calibration profile. |
-| `focus_at_startup` | `Option<bool>` | Take focus at startup instead of the first output. |
+| `focus_at_startup` | `Option<bool>` | Take focus at startup instead of the first output. Unread since the multi-monitor work; kept so old files load. |
 | `layout` | `Option<WorkspaceMode>` | Overrides the global default for workspaces created on this output. |
+| `bar` | `Option<bool>` | Show the bar on this output (unset: show it on all outputs). |
+| `dock` | `Option<bool>` | Show the dock on this output (unset: show it only on the primary output). |
+| `notifications` | `Option<bool>` | Show notification popups on this output (unset: show them only on the primary output). |
+| `deep_color` | `Option<bool>` | Scan out this output with 10 bits for each color channel instead of 8. |
+| `software_brightness` | `Option<f64>` | Dim level from 0.15 to 1.0 that the compositor writes for a monitor with no backlight and no DDC/CI. |
 
 ### `OutputLayout`
 
@@ -154,9 +170,11 @@ The file with every key at its default:
 ```ron
 (
     layout: Tiling,
+    workspace_scope: PerMonitor,
     focus_follows_mouse: false,
     allow_overlapping_outputs: false,
     window_rules: [(app_id:Some("^steam_app_"),tearing:Some(true),vrr:Some(true))],
+    primary_output: None,
     outputs: [],
     output_layouts: [],
     startup: [],

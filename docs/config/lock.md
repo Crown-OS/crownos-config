@@ -92,6 +92,7 @@ The typeface the clock's digits are drawn in.
 | Variant | What it means |
 |---|---|
 | `Sans` (default) | Condensed monoline digits with round bowls. |
+| `Grotesk` | Monoline digits with a grotesque's squarer bowls. |
 | `Serif` | High-contrast digits: heavy stems and hairline curves. |
 | `Higher` | Condensed square monoline digits, their bars set low, after Marisa Passos's Higher. |
 | `Apache` | Heavy block digits with chamfered corners, after Aldo the Apache. |
