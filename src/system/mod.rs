@@ -9,8 +9,9 @@ pub mod setup_state;
 
 pub use ai::{Accelerator, AcceleratorKind, AcceleratorVendor, AiConfig, AiConfigError, Backend};
 pub use setup::{
-    Browser, BrowserEngine, DeveloperTool, DeveloperTools, PackageSource, SETUP_CONFIG_PATH,
-    SetupConfig, SetupConfigError, UnknownBrowser, UnknownDeveloperTool,
+    Browser, BrowserEngine, DeveloperTool, DeveloperTools, PLAYWRIGHT_BROWSERS_PATH,
+    PLAYWRIGHT_MCP_SERVER, PLAYWRIGHT_PREFIX, PackageSource, SETUP_CONFIG_PATH, SetupConfig,
+    SetupConfigError, UnknownBrowser, UnknownDeveloperTool,
 };
 pub use setup_state::{
     SETUP_STATE_DIR, SetupStateError, SetupTask, TaskState, TaskStatus, UnknownSetupTask,
