@@ -16,7 +16,7 @@ pub const PLAYWRIGHT_PREFIX: &str = "/usr/lib/crownos/playwright";
 
 /// The Playwright MCP server binary, under [`PLAYWRIGHT_PREFIX`].
 pub const PLAYWRIGHT_MCP_SERVER: &str =
-    "/usr/lib/crownos/playwright/node_modules/.bin/mcp-server-playwright";
+    "/usr/lib/crownos/playwright/node_modules/.bin/playwright-mcp";
 
 /// Where Playwright keeps the browser builds it downloads, for every user.
 pub const PLAYWRIGHT_BROWSERS_PATH: &str = "/usr/share/playwright";
