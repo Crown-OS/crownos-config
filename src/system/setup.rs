@@ -39,7 +39,7 @@ pub struct UnknownBrowser(pub String);
 impl Browser {
     pub const ALL: [Browser; 4] = [Self::Brave, Self::Chrome, Self::Chromium, Self::Firefox];
 
-    pub fn id(self) -> &'static str {
+    pub const fn id(self) -> &'static str {
         match self {
             Self::Brave => "brave",
             Self::Chrome => "chrome",
@@ -48,7 +48,7 @@ impl Browser {
         }
     }
 
-    pub fn name(self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::Brave => "Brave",
             Self::Chrome => "Google Chrome",
@@ -154,7 +154,7 @@ pub struct UnknownDeveloperTool(pub String);
 impl DeveloperTool {
     pub const ALL: [DeveloperTool; 3] = [Self::ClaudeCode, Self::Codex, Self::Cursor];
 
-    pub fn id(self) -> &'static str {
+    pub const fn id(self) -> &'static str {
         match self {
             Self::ClaudeCode => "claude-code",
             Self::Codex => "codex",
@@ -162,7 +162,7 @@ impl DeveloperTool {
         }
     }
 
-    pub fn name(self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::ClaudeCode => "Claude Code",
             Self::Codex => "Codex",

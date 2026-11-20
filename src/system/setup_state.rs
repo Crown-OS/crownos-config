@@ -26,7 +26,7 @@ pub struct UnknownSetupTask(pub String);
 impl SetupTask {
     pub const ALL: [SetupTask; 3] = [Self::Browser, Self::DeveloperTools, Self::Playwright];
 
-    pub fn id(self) -> &'static str {
+    pub const fn id(self) -> &'static str {
         match self {
             Self::Browser => "browser",
             Self::DeveloperTools => "developer-tools",
@@ -34,7 +34,7 @@ impl SetupTask {
         }
     }
 
-    pub fn name(self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
             Self::Browser => "Web browser",
             Self::DeveloperTools => "Developer tools",
