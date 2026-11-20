@@ -12,6 +12,10 @@ use serde::{Deserialize, Serialize};
 
 pub const SETUP_STATE_DIR: &str = "/var/lib/crownos/setup";
 
+/// How many times the runner tries a task for one set of choices before it
+/// stops and leaves the failure for Settings to show.
+pub const MAX_TASK_ATTEMPTS: u32 = 3;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SetupTask {
     Browser,
@@ -77,6 +81,9 @@ pub struct TaskState {
     pub started_at_unix: Option<u64>,
     #[serde(default)]
     pub finished_at_unix: Option<u64>,
+    /// How many runs ended in `Failed` for this generation.
+    #[serde(default)]
+    pub attempts: u32,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -133,6 +140,12 @@ impl TaskState {
         matches!(self.status, TaskStatus::Done | TaskStatus::Failed { .. })
     }
 
+    /// True when the task failed [`MAX_TASK_ATTEMPTS`] times for this
+    /// generation, so the runner does not try it again.
+    pub fn gave_up(&self) -> bool {
+        matches!(self.status, TaskStatus::Failed { .. }) && self.attempts >= MAX_TASK_ATTEMPTS
+    }
+
     pub fn render(&self) -> Result<String, SetupStateError> {
         Ok(ron::ser::to_string_pretty(
             self,
@@ -163,6 +176,7 @@ mod tests {
             generation: 3,
             started_at_unix: Some(1_700_000_000),
             finished_at_unix: Some(1_700_000_042),
+            attempts: 1,
         }
     }
 
@@ -181,7 +195,19 @@ mod tests {
         assert_eq!(state.generation, 0);
         assert_eq!(state.started_at_unix, None);
         assert_eq!(state.finished_at_unix, None);
+        assert_eq!(state.attempts, 0);
         assert!(!state.is_settled());
+    }
+
+    #[test]
+    fn a_task_gives_up_after_the_last_attempt() {
+        let mut state = failed_state();
+        assert!(state.is_settled());
+        assert!(!state.gave_up());
+        state.attempts = MAX_TASK_ATTEMPTS;
+        assert!(state.gave_up());
+        state.status = TaskStatus::Done;
+        assert!(!state.gave_up());
     }
 
     #[test]
@@ -221,6 +247,7 @@ mod tests {
             generation: 1,
             started_at_unix: Some(1_700_000_000),
             finished_at_unix: None,
+            attempts: 0,
         };
         assert!(!state.is_settled());
         let written = std::fs::write(

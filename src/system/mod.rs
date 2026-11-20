@@ -14,5 +14,6 @@ pub use setup::{
     SetupConfigError, UnknownBrowser, UnknownDeveloperTool,
 };
 pub use setup_state::{
-    SETUP_STATE_DIR, SetupStateError, SetupTask, TaskState, TaskStatus, UnknownSetupTask,
+    MAX_TASK_ATTEMPTS, SETUP_STATE_DIR, SetupStateError, SetupTask, TaskState, TaskStatus,
+    UnknownSetupTask,
 };
