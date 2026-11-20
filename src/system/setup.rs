@@ -333,6 +333,12 @@ mod tests {
     }
 
     #[test]
+    fn the_playwright_server_lives_under_the_prefix() {
+        assert!(PLAYWRIGHT_MCP_SERVER.starts_with(PLAYWRIGHT_PREFIX));
+        assert!(PLAYWRIGHT_MCP_SERVER.ends_with("/node_modules/.bin/playwright-mcp"));
+    }
+
+    #[test]
     fn render_writes_the_documented_shape() {
         let config = SetupConfig {
             browser: Browser::Firefox,
