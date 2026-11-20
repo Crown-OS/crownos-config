@@ -49,7 +49,10 @@ crate::section! {
         /// it left alone.
         pub dictation_gpu as DictationGpu: bool = true,
 
-        pub keyboard_repeat_rate as KeyboardRepeatRate:u16 = 200
+        pub keyboard_repeat_rate as KeyboardRepeatRate:u16 = 200,
+
+        /// Swap the Caps Lock and Escape keys.
+        pub swap_caps_and_esc as SwapCapsAndEsc: bool = true
     }
 }
 
@@ -87,5 +90,14 @@ mod tests {
             ron::from_str::<Input>(&text).expect("parse back"),
             Input::default()
         );
+    }
+
+    #[test]
+    fn a_file_without_the_swap_key_swaps_caps_and_escape() {
+        let input: Input = crate::parser::options()
+            .from_str("(dictation_enabled: false)")
+            .expect("parse partial input section");
+
+        assert!(input.swap_caps_and_esc);
     }
 }

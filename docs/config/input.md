@@ -26,6 +26,7 @@ changing the shortcut re-arms it without a restart.
 | `dictation_hotkey` | `Keybind` | `"Super+Space"` | The push-to-talk shortcut: held to record, released to transcribe. Held rather than struck, which is why a modifier-only chord is a reasonable thing to put here — see `Keybind`. |
 | `dictation_gpu` | `bool` | `true` | Whether to run speech recognition on the GPU when one is available. The same switch as crowndictator's `--cpu` flag, from the other direction. Falling back to the CPU is automatic when there is no usable GPU, so this only matters on a machine that has one and wants it left alone. |
 | `keyboard_repeat_rate` | `u16` | `200` |  |
+| `swap_caps_and_esc` | `bool` | `true` | Swap the Caps Lock and Escape keys. |
 
 ## Example
 
@@ -38,5 +39,6 @@ The file with every key at its default:
     dictation_hotkey: "Super+Space",
     dictation_gpu: true,
     keyboard_repeat_rate: 200,
+    swap_caps_and_esc: true,
 )
 ```
