@@ -12,9 +12,20 @@
 //!     [--list LABEL --item A --item B --initial INDEX]
 //! ```
 //!
-//! The dialog prints `option VALUE` for each extra question. Then it prints `grant` and exits
-//! with 0 when the user said yes, or exits with 1 when the user said no. Any other exit means
-//! that nobody was asked.
+//! The dialog prints nothing. Its exit status is the answer:
+//!
+//! | Status | Meaning |
+//! |---|---|
+//! | 1 | declined: Escape, or the dialog closed, without the extra questions' values |
+//! | 2 | misused: bad arguments, or a question too large to encode |
+//! | 16–255 | answered: `16 + choice × states + state` |
+//! | any other, or a signal | nobody was asked |
+//!
+//! `choice` is the index of the chosen button, counted over all sections; the cancel button
+//! counts as one more button after the others, so a deny keeps the values of the extra
+//! questions. `state` holds the value of each extra question in a mixed radix, the first one
+//! lowest: a checkbox has 2 values (0 off, 1 on), a list one value per item (its index).
+//! `states` is the product of those counts. A question must fit: `choices × states ≤ 240`.
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -25,10 +36,111 @@ pub const DIALOG_EXECUTABLE: &str = "/usr/lib/crownos-portal-dialog";
 #[cfg(debug_assertions)]
 const DIALOG_OVERRIDE: &str = "CROWN_CONSENT_DIALOG";
 const GRANT: &str = "grant";
-const OPTION_PREFIX: &str = "option ";
-const DECLINED: i32 = 1;
 const TRUE: &str = "true";
 const FALSE: &str = "false";
+
+/// Escape, or the dialog closed: a decline without the values of the extra questions.
+pub const DECLINED: u8 = 1;
+/// Bad arguments, or a question too large to encode.
+pub const MISUSED: u8 = 2;
+/// The first status that holds an answer.
+pub const FIRST_ANSWER: u8 = 16;
+const ANSWER_CODES: usize = 256 - FIRST_ANSWER as usize;
+
+/// One extra question under the message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OptionShape {
+    Checkbox,
+    List { items: usize },
+}
+
+impl OptionShape {
+    const fn values(self) -> usize {
+        match self {
+            Self::Checkbox => 2,
+            Self::List { items } => items,
+        }
+    }
+}
+
+/// What a question asks: how many buttons, and which extra questions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuestionShape {
+    pub choices: usize,
+    pub options: Vec<OptionShape>,
+}
+
+/// The chosen button and the value of each extra question, in order.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DialogAnswer {
+    pub choice: usize,
+    pub option_values: Vec<usize>,
+}
+
+impl QuestionShape {
+    fn states(&self) -> Option<usize> {
+        self.options.iter().try_fold(1_usize, |states, option| {
+            states.checked_mul(option.values())
+        })
+    }
+
+    /// Whether every answer to this question has a status.
+    pub fn fits(&self) -> bool {
+        self.choices > 0
+            && self.options.iter().all(|option| option.values() > 0)
+            && self
+                .states()
+                .and_then(|states| states.checked_mul(self.choices))
+                .is_some_and(|codes| codes <= ANSWER_CODES)
+    }
+
+    /// The status for `answer`, or `None` when it is not an answer to this question.
+    pub fn encode(&self, answer: &DialogAnswer) -> Option<u8> {
+        if !self.fits()
+            || answer.choice >= self.choices
+            || answer.option_values.len() != self.options.len()
+        {
+            return None;
+        }
+        let mut state = 0;
+        let mut radix = 1;
+        for (option, value) in self.options.iter().zip(&answer.option_values) {
+            if *value >= option.values() {
+                return None;
+            }
+            state += value * radix;
+            radix *= option.values();
+        }
+        let code = answer.choice * radix + state;
+        u8::try_from(code + usize::from(FIRST_ANSWER)).ok()
+    }
+
+    /// The answer in an exit status. `None` is declined: status 1, a status out of the table,
+    /// a status this question cannot have, or no status (a signal).
+    pub fn decode(&self, status: Option<i32>) -> Option<DialogAnswer> {
+        let code = usize::try_from(status?)
+            .ok()?
+            .checked_sub(usize::from(FIRST_ANSWER))?;
+        let states = self.states()?;
+        if !self.fits() || code >= states * self.choices {
+            return None;
+        }
+        let mut state = code % states;
+        let option_values = self
+            .options
+            .iter()
+            .map(|option| {
+                let value = state % option.values();
+                state /= option.values();
+                value
+            })
+            .collect();
+        Some(DialogAnswer {
+            choice: code / states,
+            option_values,
+        })
+    }
+}
 
 /// The dialog program to run.
 pub fn dialog_executable() -> PathBuf {
@@ -72,8 +184,7 @@ pub struct NotAsked(pub Option<i32>);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConsentAnswer {
     pub granted: bool,
-    /// One value for each extra question, or `None` when the dialog did not print one for each
-    /// (closed with Escape, or failed).
+    /// One value for each extra question, or `None` when the dialog closed without them.
     pub option_values: Option<Vec<String>>,
 }
 
@@ -139,41 +250,60 @@ impl ConsentQuestion {
         arguments
     }
 
-    /// The dialog process, ready to run: no input, the answer on stdout.
+    /// The dialog process, ready to run: no input, no output; the answer is the exit status.
     pub fn command(&self) -> Command {
         let mut command = Command::new(dialog_executable());
         command
             .args(self.arguments())
             .stdin(Stdio::null())
-            .stdout(Stdio::piped());
+            .stdout(Stdio::null());
         command
     }
 
-    /// The answer in the output of a dialog that exited with `exit_code`.
+    /// What the exit status encodes: the grant button, the cancel button and the extra
+    /// questions.
+    pub fn shape(&self) -> QuestionShape {
+        QuestionShape {
+            choices: 2,
+            options: self
+                .options
+                .iter()
+                .map(|option| match option {
+                    ConsentOption::Checkbox { .. } => OptionShape::Checkbox,
+                    ConsentOption::List { items, .. } => OptionShape::List { items: items.len() },
+                })
+                .collect(),
+        }
+    }
+
+    /// The answer in the exit status of the dialog; `None` when a signal ended it.
     ///
     /// # Errors
     ///
-    /// [`NotAsked`] when the exit code is neither a yes nor a no.
-    pub fn answer(&self, exit_code: Option<i32>, stdout: &[u8]) -> Result<ConsentAnswer, NotAsked> {
-        let text = std::str::from_utf8(stdout).unwrap_or_default();
-        let granted = match exit_code {
-            Some(0) => text.lines().next_back().map(str::trim) == Some(GRANT),
-            Some(DECLINED) => false,
-            other => return Err(NotAsked(other)),
-        };
-        let values: Vec<String> = text
-            .lines()
-            .filter_map(|line| line.strip_prefix(OPTION_PREFIX))
-            .map(|value| value.trim().to_owned())
+    /// [`NotAsked`] when the status is neither an answer nor a decline.
+    pub fn answer(&self, exit_status: Option<i32>) -> Result<ConsentAnswer, NotAsked> {
+        if exit_status == Some(i32::from(DECLINED)) {
+            return Ok(ConsentAnswer {
+                granted: false,
+                option_values: None,
+            });
+        }
+        let decoded = self
+            .shape()
+            .decode(exit_status)
+            .ok_or(NotAsked(exit_status))?;
+        let option_values = self
+            .options
+            .iter()
+            .zip(decoded.option_values)
+            .map(|(option, value)| match option {
+                ConsentOption::Checkbox { .. } => (value == 1).to_string(),
+                ConsentOption::List { .. } => value.to_string(),
+            })
             .collect();
-        let option_values = values
-            .len()
-            .checked_sub(self.options.len())
-            .and_then(|first| values.get(first..))
-            .map(<[String]>::to_vec);
         Ok(ConsentAnswer {
-            granted,
-            option_values,
+            granted: decoded.choice == 0,
+            option_values: Some(option_values),
         })
     }
 }
@@ -234,27 +364,102 @@ mod tests {
         );
     }
 
+    fn status(question: &ConsentQuestion, choice: usize, option_values: Vec<usize>) -> Option<i32> {
+        question
+            .shape()
+            .encode(&DialogAnswer {
+                choice,
+                option_values,
+            })
+            .map(i32::from)
+    }
+
     #[test]
-    fn a_grant_needs_exit_0_and_the_grant_line() {
+    fn a_grant_and_a_deny_keep_the_values_of_the_extra_questions() {
         let question = question();
-        let answer = question
-            .answer(Some(0), b"option true\noption 1\ngrant\n")
-            .unwrap();
-        assert!(answer.granted && answer.checked(0));
-        assert_eq!(answer.chosen(1), Some(1));
-        assert!(!question.answer(Some(0), b"option true\n").unwrap().granted);
-        let denied = question
-            .answer(Some(1), b"option false\noption 0\n")
-            .unwrap();
-        assert!(!denied.granted && !denied.checked(0));
-        let closed = question.answer(Some(1), b"").unwrap();
+        let granted = question.answer(status(&question, 0, vec![1, 1])).unwrap();
+        assert!(granted.granted && granted.checked(0));
+        assert_eq!(granted.chosen(1), Some(1));
+        let denied = question.answer(status(&question, 1, vec![1, 0])).unwrap();
+        assert!(!denied.granted && denied.checked(0));
+        assert_eq!(denied.chosen(1), Some(0));
+        let closed = question.answer(Some(1)).unwrap();
+        assert!(!closed.granted);
         assert_eq!(closed.option_values, None);
     }
 
     #[test]
     fn a_dialog_that_could_not_show_asked_nobody() {
         let question = question();
-        assert_eq!(question.answer(Some(2), b""), Err(NotAsked(Some(2))));
-        assert_eq!(question.answer(None, b"grant\n"), Err(NotAsked(None)));
+        for exit_status in [Some(0), Some(2), Some(15), Some(255), None] {
+            assert_eq!(question.answer(exit_status), Err(NotAsked(exit_status)));
+        }
+    }
+
+    #[test]
+    fn every_answer_round_trips_through_its_status() {
+        let shape = QuestionShape {
+            choices: 3,
+            options: vec![OptionShape::Checkbox, OptionShape::List { items: 4 }],
+        };
+        for choice in 0..3 {
+            for checked in 0..2 {
+                for item in 0..4 {
+                    let answer = DialogAnswer {
+                        choice,
+                        option_values: vec![checked, item],
+                    };
+                    let status = shape.encode(&answer).map(i32::from);
+                    assert!(status.is_some_and(|status| status >= 16));
+                    assert_eq!(shape.decode(status), Some(answer));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_plain_question_uses_one_status_per_button() {
+        let picker = QuestionShape {
+            choices: 240,
+            options: Vec::new(),
+        };
+        assert!(picker.fits());
+        let last = DialogAnswer {
+            choice: 239,
+            option_values: Vec::new(),
+        };
+        assert_eq!(picker.encode(&last), Some(255));
+        let too_many = QuestionShape {
+            choices: 241,
+            options: Vec::new(),
+        };
+        assert!(!too_many.fits());
+    }
+
+    #[test]
+    fn declines_and_foreign_statuses_are_no_answer() {
+        let shape = QuestionShape {
+            choices: 1,
+            options: vec![OptionShape::Checkbox],
+        };
+        for status in [
+            None,
+            Some(0),
+            Some(1),
+            Some(2),
+            Some(15),
+            Some(18),
+            Some(300),
+            Some(-1),
+        ] {
+            assert_eq!(shape.decode(status), None, "{status:?}");
+        }
+        assert_eq!(
+            shape.encode(&DialogAnswer {
+                choice: 1,
+                option_values: vec![0]
+            }),
+            None
+        );
     }
 }

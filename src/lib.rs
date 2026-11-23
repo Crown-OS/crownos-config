@@ -54,7 +54,6 @@
 
 mod config;
 pub mod consent_dialog;
-pub mod consent_exit;
 mod key;
 pub mod keybind;
 mod parser;
