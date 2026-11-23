@@ -6,9 +6,11 @@ use std::path::{Path, PathBuf};
 
 use super::AppKey;
 
+mod flatpak;
 mod launchers;
 mod runtimes;
 
+pub use flatpak::{FLATPAK_ENGINE, USER_FLATPAK_ENGINE};
 pub use launchers::{LAUNCHER_FILE, LauncherFileError, LauncherMap};
 
 use runtimes::{ELECTRON, KEYED_RUNTIMES, Runtime, UNKEYED_RUNTIMES};
