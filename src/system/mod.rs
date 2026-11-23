@@ -7,7 +7,10 @@ pub mod ai;
 pub mod setup;
 pub mod setup_state;
 
-pub use ai::{Accelerator, AcceleratorKind, AcceleratorVendor, AiConfig, AiConfigError, Backend};
+pub use ai::{
+    Accelerator, AcceleratorKind, AcceleratorVendor, AiConfig, AiConfigError, Backend, Device,
+    Runtime,
+};
 pub use setup::{
     Browser, BrowserEngine, DeveloperTool, DeveloperTools, PLAYWRIGHT_BROWSERS_PATH,
     PLAYWRIGHT_MCP_SERVER, PLAYWRIGHT_PREFIX, PackageSource, SETUP_CONFIG_PATH, SetupConfig,
