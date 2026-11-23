@@ -13,6 +13,7 @@
 
 mod app_key;
 mod migration;
+mod resolve;
 mod scope;
 mod session;
 
@@ -27,6 +28,9 @@ pub use session::current_session;
 
 /// Scopes a session-only key never gets: they capture or control other apps.
 const NOT_FOR_SESSION_ONLY_KEYS: [Scope; 3] = [Scope::Raw, Scope::Engine, Scope::PolicyAdmin];
+
+/// The one executable that may hold [`Scope::Engine`], when root controls it.
+pub const CONTEXT_ENGINE_EXECUTABLE: &str = "/usr/bin/crown-contextd";
 
 /// What happens when an application without a grant asks for context.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,7 +147,7 @@ impl ContextAccess {
         {
             let stored: ScopeSet = grant.scopes.iter().collect();
             return ContextDecision::Granted(
-                restrict(stored, is_session_only(key)).with_included(),
+                restrict(key, stored, is_session_only(key)).with_included(),
             );
         }
         let policy = if key.is_sandboxed() {
@@ -170,9 +174,9 @@ impl ContextAccess {
     /// [`Scope::Engine`] or [`Scope::PolicyAdmin`].
     pub fn grant(&mut self, key: &AppKey, scopes: ScopeSet, expires: Expiry) {
         if is_session_only(key) {
-            self.store_grant(key, restrict(scopes, true), Expiry::this_session());
+            self.store_grant(key, restrict(key, scopes, true), Expiry::this_session());
         } else {
-            self.store_grant(key, scopes, expires);
+            self.store_grant(key, restrict(key, scopes, false), expires);
         }
     }
 
@@ -212,13 +216,26 @@ fn is_session_only(key: &AppKey) -> bool {
     key.is_session_only(dirs::home_dir().as_deref())
 }
 
-fn restrict(scopes: ScopeSet, session_only: bool) -> ScopeSet {
-    if session_only {
+/// The scopes `key` may hold at all: a session-only key never gets Raw,
+/// Engine or PolicyAdmin, and of the executables only crown-contextd may
+/// run the engine.
+pub fn allowed_scopes(key: &AppKey) -> ScopeSet {
+    restrict(key, ScopeSet::ALL, is_session_only(key))
+}
+
+fn restrict(key: &AppKey, scopes: ScopeSet, session_only: bool) -> ScopeSet {
+    let scopes = if session_only {
         NOT_FOR_SESSION_ONLY_KEYS
             .into_iter()
             .fold(scopes, ScopeSet::without)
     } else {
         scopes
+    };
+    match key {
+        AppKey::HostExecutable { path } if path.as_os_str() != CONTEXT_ENGINE_EXECUTABLE => {
+            scopes.without(Scope::Engine)
+        }
+        _ => scopes,
     }
 }
 
@@ -322,6 +339,22 @@ mod tests {
         assert_eq!(
             access.scopes_for(&script, at(0)),
             ScopeSet::EMPTY.with(Scope::Text)
+        );
+    }
+
+    #[test]
+    fn of_the_executables_only_the_context_engine_may_run_the_engine() {
+        let mut access = ContextAccess::default();
+        let other = executable("/usr/bin/agent");
+        access.grant(&other, ScopeSet::EMPTY.with(Scope::Engine), Expiry::Never);
+        assert!(!access.scopes_for(&other, at(0)).contains(Scope::Engine));
+        assert!(!allowed_scopes(&other).contains(Scope::Engine));
+
+        let engine = executable(CONTEXT_ENGINE_EXECUTABLE);
+        let root_controls_it = !engine.is_session_only(dirs::home_dir().as_deref());
+        assert_eq!(
+            allowed_scopes(&engine).contains(Scope::Engine),
+            root_controls_it
         );
     }
 

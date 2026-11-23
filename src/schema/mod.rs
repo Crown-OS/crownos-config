@@ -76,8 +76,8 @@ pub use compositor::{
     WindowRule, WorkspaceMode, WorkspaceScope,
 };
 pub use context_access::{
-    AppKey, AppKeyError, ContextAccess, ContextAccessKey, ContextDecision, Expiry, FirstUsePolicy,
-    Grant, Scope, ScopeSet,
+    AppKey, AppKeyError, CONTEXT_ENGINE_EXECUTABLE, ContextAccess, ContextAccessKey,
+    ContextDecision, Expiry, FirstUsePolicy, Grant, Scope, ScopeSet, allowed_scopes,
 };
 pub use display::{Display, DisplayKey};
 pub use files::{Files, FilesKey, SortKey, TagColor, ViewMode};

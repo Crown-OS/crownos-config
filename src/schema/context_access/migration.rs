@@ -1,10 +1,7 @@
 use std::path::PathBuf;
 
-use super::{AppKey, ContextAccess, Expiry, Scope, ScopeSet};
+use super::{AppKey, CONTEXT_ENGINE_EXECUTABLE, ContextAccess, Expiry, Scope, ScopeSet};
 use crate::schema::Agents;
-
-const CONTEXT_ENGINE_EXECUTABLE: &str = "/usr/bin/crown-contextd";
-const CONTEXT_ENGINE_COMPONENT: &str = "crown-contextd";
 
 /// What a trusted executable of `agents.ron` could do before: see windows,
 /// pause, control windows and drive agent cursors. Never pixels.
@@ -19,8 +16,8 @@ impl ContextAccess {
     /// Copies the trusted executables of `agents.ron` into this section, one
     /// time only:
     ///
-    /// - `/usr/bin/crown-contextd` becomes `spawned:crown-contextd` with
-    ///   [`Scope::Engine`];
+    /// - `/usr/bin/crown-contextd` gets an `exe:` grant with
+    ///   [`Scope::Engine`], which it holds while root controls the file;
     /// - each other trusted executable gets an `exe:` grant with metadata,
     ///   text, pause, window control and agent cursor.
     ///
@@ -37,17 +34,15 @@ impl ContextAccess {
         }
         self.migrated_agents = true;
         for path in &agents.trusted_executables {
-            if path == CONTEXT_ENGINE_EXECUTABLE {
-                let key = AppKey::Spawned {
-                    component: CONTEXT_ENGINE_COMPONENT.to_owned(),
-                };
-                self.grant_unless_decided(&key, ScopeSet::EMPTY.with(Scope::Engine));
+            let key = AppKey::HostExecutable {
+                path: PathBuf::from(path),
+            };
+            let scopes = if path == CONTEXT_ENGINE_EXECUTABLE {
+                ScopeSet::EMPTY.with(Scope::Engine)
             } else {
-                let key = AppKey::HostExecutable {
-                    path: PathBuf::from(path),
-                };
-                self.grant_unless_decided(&key, TRUSTED_EXECUTABLE_SCOPES);
-            }
+                TRUSTED_EXECUTABLE_SCOPES
+            };
+            self.grant_unless_decided(&key, scopes);
         }
         true
     }
@@ -87,20 +82,20 @@ mod tests {
     }
 
     #[test]
-    fn the_context_engine_becomes_a_spawned_component_with_the_engine_scope() {
+    fn the_context_engine_keeps_its_executable_key_with_the_engine_scope() {
         let mut access = ContextAccess::default();
         assert!(access.migrate_agents(&agents()));
-        let contextd = AppKey::Spawned {
-            component: "crown-contextd".into(),
-        };
         assert_eq!(
-            access.grants["spawned:crown-contextd"].scopes,
+            access.grants["exe:/usr/bin/crown-contextd"].scopes,
             [Scope::Engine]
         );
+        assert!(!access.grants.keys().any(|key| key.starts_with("spawned:")));
+        let contextd = AppKey::HostExecutable {
+            path: CONTEXT_ENGINE_EXECUTABLE.into(),
+        };
+        let root_controls_it = !contextd.is_session_only(dirs::home_dir().as_deref());
         let scopes = access.scopes_for(&contextd, SystemTime::now());
-        assert!(scopes.contains(Scope::Engine));
-        assert!(scopes.contains(Scope::Metadata));
-        assert!(!access.grants.contains_key("exe:/usr/bin/crown-contextd"));
+        assert_eq!(scopes.contains(Scope::Engine), root_controls_it);
     }
 
     #[test]
@@ -132,7 +127,7 @@ mod tests {
             .filter(|(_, grant)| grant.scopes.contains(&Scope::Engine))
             .map(|(key, _)| key.as_str())
             .collect::<Vec<_>>();
-        assert_eq!(engines, ["spawned:crown-contextd"]);
+        assert_eq!(engines, ["exe:/usr/bin/crown-contextd"]);
     }
 
     #[test]
