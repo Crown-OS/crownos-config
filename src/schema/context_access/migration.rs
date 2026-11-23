@@ -1,11 +1,7 @@
 use std::path::PathBuf;
 
 use super::{AppKey, ContextAccess, Expiry, Scope, ScopeSet};
-use crate::schema::{AccessDecision, Agents};
-
-/// `agents.ron` names applications by their app id only. Their grants are
-/// copied under this sandbox engine.
-pub const MIGRATED_SANDBOX_ENGINE: &str = "flatpak";
+use crate::schema::Agents;
 
 const CONTEXT_ENGINE_EXECUTABLE: &str = "/usr/bin/crown-contextd";
 const CONTEXT_ENGINE_COMPONENT: &str = "crown-contextd";
@@ -20,14 +16,16 @@ const TRUSTED_EXECUTABLE_SCOPES: ScopeSet = ScopeSet::EMPTY
     .with(Scope::WaylandAgentCursor);
 
 impl ContextAccess {
-    /// Copies the grants of `agents.ron` into this section, one time only:
+    /// Copies the trusted executables of `agents.ron` into this section, one
+    /// time only:
     ///
     /// - `/usr/bin/crown-contextd` becomes `spawned:crown-contextd` with
     ///   [`Scope::Engine`];
     /// - each other trusted executable gets an `exe:` grant with metadata,
-    ///   text, pause, window control and agent cursor;
-    /// - each allowed app id gets a `sandbox:` grant with [`Scope::Metadata`];
-    /// - each refused app id becomes a `sandbox:` refusal.
+    ///   text, pause, window control and agent cursor.
+    ///
+    /// `app_access` is not copied: it records which apps show their own UI
+    /// to agents, not which apps may read context.
     ///
     /// The migration never grants [`Scope::Raw`] or [`Scope::PolicyAdmin`].
     /// An existing grant or refusal for the same key stays. `agents.ron` does
@@ -51,19 +49,6 @@ impl ContextAccess {
                 self.grant_unless_decided(&key, TRUSTED_EXECUTABLE_SCOPES);
             }
         }
-        for (app_id, decision) in &agents.app_access {
-            let key = AppKey::Sandboxed {
-                engine: MIGRATED_SANDBOX_ENGINE.to_owned(),
-                app_id: app_id.clone(),
-            };
-            match decision {
-                AccessDecision::Allow => {
-                    self.grant_unless_decided(&key, ScopeSet::EMPTY.with(Scope::Metadata));
-                }
-                AccessDecision::Deny if !self.is_decided(&key) => self.deny(&key),
-                AccessDecision::Deny => {}
-            }
-        }
         true
     }
 
@@ -84,14 +69,14 @@ mod tests {
     use std::collections::BTreeMap;
     use std::time::SystemTime;
 
-    use super::super::Grant;
     use super::*;
+    use crate::schema::AccessDecision;
 
     fn agents() -> Agents {
         Agents {
             trusted_executables: vec![
                 "/usr/bin/crown-contextd".to_owned(),
-                "/usr/bin/crownos-computer-use".to_owned(),
+                "/usr/bin/env".to_owned(),
             ],
             ask_for_app_access: true,
             app_access: BTreeMap::from([
@@ -123,7 +108,7 @@ mod tests {
         let mut access = ContextAccess::default();
         access.migrate_agents(&agents());
         let computer_use = AppKey::HostExecutable {
-            path: "/usr/bin/crownos-computer-use".into(),
+            path: "/usr/bin/env".into(),
         };
         let scopes = access.scopes_for(&computer_use, SystemTime::now());
         assert_eq!(scopes, TRUSTED_EXECUTABLE_SCOPES);
@@ -151,17 +136,11 @@ mod tests {
     }
 
     #[test]
-    fn app_answers_become_sandbox_grants_with_metadata_only_and_refusals() {
+    fn app_access_answers_are_not_copied() {
         let mut access = ContextAccess::default();
         access.migrate_agents(&agents());
-        assert_eq!(
-            access.grants["sandbox:flatpak/org.example.Notes"],
-            Grant {
-                scopes: vec![Scope::Metadata],
-                expires: Expiry::Never,
-            }
-        );
-        assert_eq!(access.denied, ["sandbox:flatpak/org.example.Spy"]);
+        assert!(access.grants.keys().all(|key| !key.starts_with("sandbox:")));
+        assert!(access.denied.is_empty());
     }
 
     #[test]

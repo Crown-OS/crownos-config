@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -49,13 +50,21 @@ pub enum AppKeyError {
 }
 
 impl AppKey {
-    /// A script or an executable under the home directory can be changed by
-    /// any program of the user. It gets grants for this session only and
-    /// never [`Scope::Raw`](super::Scope::Raw).
+    /// A script, or an executable the user can change, gets grants for this
+    /// session only and never the scopes that capture or control others.
+    /// The user can change an executable that is under `home`, or that is
+    /// not owned by root, or that group or others can write, or whose
+    /// directory is such. An executable that cannot be checked counts too.
     pub fn is_session_only(&self, home: Option<&Path>) -> bool {
         match self {
             Self::Interpreted { .. } => true,
-            Self::HostExecutable { path } => home.is_some_and(|home| path.starts_with(home)),
+            Self::HostExecutable { path } => {
+                home.is_some_and(|home| path.starts_with(home))
+                    || !is_controlled_by_root(path)
+                    || path
+                        .parent()
+                        .is_none_or(|directory| !is_controlled_by_root(directory))
+            }
             Self::Sandboxed { .. } | Self::Spawned { .. } => false,
         }
     }
@@ -117,6 +126,11 @@ impl FromStr for AppKey {
         }
         Err(AppKeyError::UnknownKind(text.to_owned()))
     }
+}
+
+fn is_controlled_by_root(path: &Path) -> bool {
+    std::fs::metadata(path)
+        .is_ok_and(|metadata| metadata.uid() == 0 && metadata.mode() & 0o022 == 0)
 }
 
 fn non_empty<'a>(part: &'a str, key: &str) -> Result<&'a str, AppKeyError> {
@@ -247,21 +261,29 @@ mod tests {
     }
 
     #[test]
-    fn scripts_and_home_executables_are_session_only() {
-        let home = Path::new("/home/user");
+    fn scripts_and_executables_the_user_can_change_are_session_only() -> std::io::Result<()> {
         let script = AppKey::Interpreted {
             interpreter: "/usr/bin/python3".into(),
             script: "/usr/share/agent.py".into(),
         };
-        let in_home = AppKey::HostExecutable {
-            path: "/home/user/.local/bin/agent".into(),
+        let root_owned = AppKey::HostExecutable {
+            path: "/usr/bin/env".into(),
         };
-        let system = AppKey::HostExecutable {
-            path: "/usr/bin/agent".into(),
+        let user_owned_path =
+            std::env::temp_dir().join(format!("crownos-config-app-key-{}", std::process::id()));
+        std::fs::write(&user_owned_path, b"")?;
+        let user_owned = AppKey::HostExecutable {
+            path: user_owned_path.clone(),
         };
-        assert!(script.is_session_only(Some(home)));
-        assert!(in_home.is_session_only(Some(home)));
-        assert!(!system.is_session_only(Some(home)));
-        assert!(!in_home.is_session_only(None));
+        let missing = AppKey::HostExecutable {
+            path: "/usr/bin/crownos-no-such-agent".into(),
+        };
+
+        assert!(script.is_session_only(None));
+        assert!(!root_owned.is_session_only(None));
+        assert!(root_owned.is_session_only(Some(Path::new("/usr"))));
+        assert!(user_owned.is_session_only(None));
+        assert!(missing.is_session_only(None));
+        std::fs::remove_file(user_owned_path)
     }
 }

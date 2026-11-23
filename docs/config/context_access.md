@@ -24,7 +24,7 @@ sandboxed client, `host_default` for every other client.
 | `host_default` | `FirstUsePolicy` | `Ask` | What every other application without a grant gets. |
 | `grants` | `BTreeMap<String, Grant>` | `{}` | Grants by application key, such as `exe:/usr/bin/crown-contextd` or `sandbox:flatpak/org.example.Notes`. |
 | `denied` | `Vec<String>` | `[]` | Application keys the user refused. A refusal is stronger than a grant. |
-| `raw_reauth_minutes` | `u32` | `5` | Minutes after which the user must authenticate again before an application gets screen pixels. |
+| `raw_reauth_minutes` | `u32` | `5` | Minutes after which the user must authenticate again before an application gets screen pixels through the `Raw` scope. It does not apply to the `Engine` scope. |
 | `migrated_agents` | `bool` | `false` | Set when the grants of `agents.ron` were copied into this file, so that a grant the user removes later does not come back. |
 
 ## Types
@@ -71,7 +71,7 @@ When a grant stops.
 | Variant | What it means |
 |---|---|
 | `Never` (default) | The grant stays until the user removes it. |
-| `Session` | The grant stops when the user logs out. The compositor calls `ContextAccess::forget_session_grants` when a session starts. |
+| `Session(String)` | The grant applies only in the session with this identity, from `current_session`. The compositor also calls `ContextAccess::forget_session_grants` when a session starts. |
 | `At(u64)` | The grant stops at this time, in seconds since the Unix epoch. |
 
 ## Example
