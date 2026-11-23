@@ -11,6 +11,7 @@ Every setting is one RON file under `~/.config/crownos/`, named after its sectio
 | [camera](camera.md) | `camera.ron` | The camera: which device, how it records, and which AI effects are on. | The consumer is crownos-camera. |
 | [clipboard](clipboard.md) | `clipboard.ron` | The clipboard manager: how much of what was copied outlives the app that copied it. | The consumer is [crownos-clipboard], which reads this file at startup. |
 | [compositor](compositor.md) | `compositor.ron` | Window management: tiling, keybindings, window rules, outputs. | The consumer is [crownpositor], which reads this file live — a rebind takes effect without a restart. |
+| [context_access](context_access.md) | `context_access.ron` | Which applications may use screen context, and how much of it. | The consumers are [crownpositor], which gates the context, window control and agent cursor protocols, and [crown-contextd], which gates its API. |
 | [display](display.md) | `display.ron` |  | every CrownOS app, through crownos-config |
 | [files](files.md) | `files.ron` | The file manager: how folders are listed and what happens when a drive is plugged in. | The consumer is crownos-files, which follows this file while it runs. |
 | [glass](glass.md) | `glass.ron` | The lit edge of the compositor's frosted glass. | every CrownOS app, through crownos-config |
