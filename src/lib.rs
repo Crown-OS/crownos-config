@@ -53,6 +53,7 @@
 //! immediately get its own write back as an external change and fight itself.
 
 mod config;
+pub mod consent_dialog;
 pub mod consent_exit;
 mod key;
 pub mod keybind;
