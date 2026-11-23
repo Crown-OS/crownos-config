@@ -8,7 +8,13 @@
 //! program of the same user can read the screen in other ways, or start an
 //! allowed program with `LD_PRELOAD` or through fork and exec. This holds for
 //! the Engine grant of `exe:/usr/bin/crown-contextd` too. For a sandboxed app
-//! the grant is enforced.
+//! the grant is enforced for the key that the sandbox claims.
+//!
+//! Limit: a sandboxed key is the sandbox's own claim. A host process can open a
+//! security context that claims `org.flatpak` and any app id, with a forged
+//! `.flatpak-info`, and `flatpak run --command` runs other code under the app's
+//! identity. Treat a Flatpak key as a name, not as proof; crownos-secretsd types
+//! no secret into a Flatpak window for this reason.
 //!
 //! A grant is stored under the text form of an [`AppKey`]. An application
 //! without a grant gets the default of its kind: `sandboxed_default` for a
