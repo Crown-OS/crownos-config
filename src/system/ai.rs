@@ -52,6 +52,9 @@ pub enum Runtime {
     Maxine,
     /// A server with an OpenAI-compatible API: a local sidecar, a LAN machine or a cloud.
     OpenAiCompatible,
+    /// A runtime that a newer version of this schema added.
+    #[serde(other)]
+    Unknown,
 }
 
 /// The execution target that a [`Runtime`] runs a model on.
@@ -68,6 +71,9 @@ pub enum Device {
     Vulkan,
     Cpu,
     Remote,
+    /// A device that a newer version of this schema added.
+    #[serde(other)]
+    Unknown,
 }
 
 impl Runtime {
@@ -87,6 +93,7 @@ impl Runtime {
             Self::LlamaCpp => matches!(device, D::Cuda | D::Rocm | D::Vulkan | D::Cpu),
             Self::Maxine => matches!(device, D::Cuda),
             Self::OpenAiCompatible => matches!(device, D::Remote),
+            Self::Unknown => false,
         }
     }
 }
@@ -260,6 +267,13 @@ mod tests {
         let first: FirstSchema =
             ron::from_str("(backends: [Cuda, Cpu], devices: [Rocm, Vulkan, Cpu])").expect("valid");
         assert_eq!(first.backends, [Backend::Cuda, Backend::Cpu]);
+    }
+
+    #[test]
+    fn a_device_from_a_newer_schema_reads_as_unknown() {
+        let config = AiConfig::parse("(devices: [Npu9000, Cuda])").expect("valid");
+        assert_eq!(config.devices, [Device::Unknown, Device::Cuda]);
+        assert!(!Runtime::OnnxRuntime.supports(Device::Unknown));
     }
 
     #[test]
