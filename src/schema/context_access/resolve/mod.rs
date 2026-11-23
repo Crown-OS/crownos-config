@@ -6,7 +6,10 @@ use std::path::{Path, PathBuf};
 
 use super::AppKey;
 
+mod launchers;
 mod runtimes;
+
+pub use launchers::{LAUNCHER_FILE, LauncherFileError, LauncherMap};
 
 use runtimes::{ELECTRON, KEYED_RUNTIMES, Runtime, UNKEYED_RUNTIMES};
 

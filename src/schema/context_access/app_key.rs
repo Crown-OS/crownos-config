@@ -143,7 +143,7 @@ impl FromStr for AppKey {
     }
 }
 
-fn is_controlled_by_root(path: &Path) -> bool {
+pub(super) fn is_controlled_by_root(path: &Path) -> bool {
     std::fs::metadata(path)
         .is_ok_and(|metadata| metadata.uid() == 0 && metadata.mode() & 0o022 == 0)
 }
