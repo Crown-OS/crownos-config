@@ -127,7 +127,7 @@ crate::section! {
         pub denied as Denied: Vec<String> = Vec::new(),
 
         /// Minutes after which the user must authenticate again before an
-        /// application gets screen pixels through the `Raw` scope. It does
+        /// application gets raw text through the `Raw` scope. It does
         /// not apply to the `Engine` scope.
         pub raw_reauth_minutes as RawReauthMinutes: u32 = 5,
 

@@ -4,7 +4,7 @@ use super::{AppKey, CONTEXT_ENGINE_EXECUTABLE, ContextAccess, Expiry, Scope, Sco
 use crate::schema::Agents;
 
 /// What a trusted executable of `agents.ron` could do before: see windows,
-/// pause, control windows and drive agent cursors. Never pixels.
+/// pause, control windows and drive agent cursors. Never raw text.
 const TRUSTED_EXECUTABLE_SCOPES: ScopeSet = ScopeSet::EMPTY
     .with(Scope::Metadata)
     .with(Scope::Text)

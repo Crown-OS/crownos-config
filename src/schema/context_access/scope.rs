@@ -9,7 +9,8 @@ pub enum Scope {
     Metadata,
     /// Window titles, selection types and recognized text.
     Text,
-    /// Screen pixels. The user authenticates again after `raw_reauth_minutes`.
+    /// Raw text: unredacted search results, snippets and exports. No pixels are ever stored.
+    /// The user authenticates again after `raw_reauth_minutes`.
     Raw,
     /// Add to the context memory.
     MemoryWrite,
