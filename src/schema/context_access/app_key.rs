@@ -20,6 +20,11 @@ const INTERPRETED: &str = "interp:";
 ///
 /// An executable key holds the path only. The compositor checks the device
 /// and inode of the file when the client connects.
+///
+/// A sandboxed key is only the sandbox's claim: a host process can open a
+/// security context that claims any engine and app id, and a forged
+/// `.flatpak-info` can name a system install. It names an app; it does not
+/// prove one.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum AppKey {
     /// A client in a sandbox, as `wp_security_context_v1` names it.

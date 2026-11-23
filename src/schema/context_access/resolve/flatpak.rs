@@ -1,6 +1,10 @@
 //! Flatpak apps that the user installed. Flatpak names an app by its id only, and a user can
 //! install any id under `$HOME`, also the id of a system app. Such an app gets a key of its own,
 //! which is session-only, so it never shares a grant with the system app.
+//!
+//! Limit: `.flatpak-info` is in the sandbox, so a host process that opens its own security
+//! context can forge it and name a system install. This keeps honest user installs apart; it
+//! does not prove an identity.
 
 use std::path::{Path, PathBuf};
 
@@ -115,6 +119,24 @@ mod tests {
         }
         assert!(
             allowed_scopes(&key(Some(&info("/var/lib/flatpak/app/x")), true)).contains(Scope::Raw)
+        );
+    }
+
+    #[test]
+    fn a_forged_flatpak_info_naming_a_system_install_is_believed() {
+        let forged =
+            "[Instance]\napp-path=/var/lib/flatpak/app/org.bank.App/x86_64/stable/f/files\n";
+        let claimed = sandboxed_key(
+            FLATPAK_ENGINE,
+            "org.bank.App",
+            Some(forged),
+            Some(Path::new("/home/user")),
+            |_| true,
+        );
+        assert_eq!(claimed.to_string(), "sandbox:org.flatpak/org.bank.App");
+        assert!(
+            claimed.is_sandboxed(),
+            "the key is the claim: a host process can forge it, so callers must not treat it as proof"
         );
     }
 
