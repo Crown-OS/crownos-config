@@ -280,7 +280,11 @@ mod tests {
         };
 
         assert!(script.is_session_only(None));
-        assert!(!root_owned.is_session_only(None));
+        if is_controlled_by_root(Path::new("/usr/bin/env"))
+            && is_controlled_by_root(Path::new("/usr/bin"))
+        {
+            assert!(!root_owned.is_session_only(None));
+        }
         assert!(root_owned.is_session_only(Some(Path::new("/usr"))));
         assert!(user_owned.is_session_only(None));
         assert!(missing.is_session_only(None));

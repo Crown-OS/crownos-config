@@ -142,7 +142,9 @@ impl ContextAccess {
             .filter(|grant| grant.expires.is_in_force(now, session))
         {
             let stored: ScopeSet = grant.scopes.iter().collect();
-            return ContextDecision::Granted(restrict(key, stored).with_included());
+            return ContextDecision::Granted(
+                restrict(stored, is_session_only(key)).with_included(),
+            );
         }
         let policy = if key.is_sandboxed() {
             self.sandboxed_default
@@ -167,12 +169,16 @@ impl ContextAccess {
     /// a grant for this session only, and never [`Scope::Raw`],
     /// [`Scope::Engine`] or [`Scope::PolicyAdmin`].
     pub fn grant(&mut self, key: &AppKey, scopes: ScopeSet, expires: Expiry) {
-        let expires = if is_session_only(key) {
-            Expiry::this_session()
+        if is_session_only(key) {
+            self.store_grant(key, restrict(scopes, true), Expiry::this_session());
         } else {
-            expires
-        };
-        let scopes = restrict(key, scopes);
+            self.store_grant(key, scopes, expires);
+        }
+    }
+
+    /// Stores a grant as given. [`ContextAccess::decide`] still restricts it
+    /// when the key is session-only at use.
+    fn store_grant(&mut self, key: &AppKey, scopes: ScopeSet, expires: Expiry) {
         let text = key.to_string();
         self.denied.retain(|denied| *denied != text);
         self.grants.insert(
@@ -193,16 +199,11 @@ impl ContextAccess {
         }
     }
 
-    /// Removes every session grant, and every grant of a session-only key.
-    /// Returns whether something changed.
+    /// Removes every session grant. Returns whether something changed.
     pub fn forget_session_grants(&mut self) -> bool {
         let before = self.grants.len();
-        self.grants.retain(|text, grant| {
-            let session_only = text
-                .parse::<AppKey>()
-                .is_ok_and(|key| is_session_only(&key));
-            !matches!(grant.expires, Expiry::Session(_)) && !session_only
-        });
+        self.grants
+            .retain(|_, grant| !matches!(grant.expires, Expiry::Session(_)));
         self.grants.len() != before
     }
 }
@@ -211,8 +212,8 @@ fn is_session_only(key: &AppKey) -> bool {
     key.is_session_only(dirs::home_dir().as_deref())
 }
 
-fn restrict(key: &AppKey, scopes: ScopeSet) -> ScopeSet {
-    if is_session_only(key) {
+fn restrict(scopes: ScopeSet, session_only: bool) -> ScopeSet {
+    if session_only {
         NOT_FOR_SESSION_ONLY_KEYS
             .into_iter()
             .fold(scopes, ScopeSet::without)
@@ -231,6 +232,12 @@ mod tests {
         AppKey::HostExecutable { path: path.into() }
     }
 
+    fn spawned(component: &str) -> AppKey {
+        AppKey::Spawned {
+            component: component.into(),
+        }
+    }
+
     fn sandboxed(app_id: &str) -> AppKey {
         AppKey::Sandboxed {
             engine: "flatpak".into(),
@@ -246,19 +253,12 @@ mod tests {
     fn defaults_ask_host_apps_and_refuse_sandboxed_apps() {
         let access = ContextAccess::default();
         let now = at(0);
-        assert_eq!(
-            access.decide(&executable("/usr/bin/env"), now),
-            ContextDecision::Ask
-        );
+        assert_eq!(access.decide(&spawned("agent"), now), ContextDecision::Ask);
         assert_eq!(
             access.decide(&sandboxed("org.example.Notes"), now),
             ContextDecision::Denied
         );
-        assert!(
-            access
-                .scopes_for(&executable("/usr/bin/env"), now)
-                .is_empty()
-        );
+        assert!(access.scopes_for(&spawned("agent"), now).is_empty());
     }
 
     #[test]
@@ -268,14 +268,14 @@ mod tests {
             ..ContextAccess::default()
         };
         assert_eq!(
-            access.decide(&executable("/usr/bin/env"), at(0)),
+            access.decide(&spawned("agent"), at(0)),
             ContextDecision::Denied
         );
     }
 
     #[test]
     fn a_grant_gives_its_scopes_until_it_expires() {
-        let key = executable("/usr/bin/env");
+        let key = spawned("agent");
         let mut access = ContextAccess::default();
         let scopes = ScopeSet::EMPTY.with(Scope::Metadata).with(Scope::Raw);
         access.grant(&key, scopes, Expiry::At(100));
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn the_engine_scope_includes_what_it_observes() {
-        let key = executable("/usr/bin/env");
+        let key = spawned("agent");
         let mut access = ContextAccess::default();
         access.grant(&key, ScopeSet::EMPTY.with(Scope::Engine), Expiry::Never);
         let scopes = access.scopes_for(&key, at(0));
@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn a_session_grant_applies_only_in_its_own_session() {
-        let key = executable("/usr/bin/env");
+        let key = spawned("agent");
         let mut access = ContextAccess::default();
         access.grant(&key, ScopeSet::ALL, Expiry::Session("boot-a".to_owned()));
         let granted = |session| access.decide_in_session(&key, at(0), session);
@@ -365,12 +365,8 @@ mod tests {
     #[test]
     fn forgetting_session_grants_keeps_the_lasting_ones() {
         let mut access = ContextAccess::default();
-        access.grant(
-            &executable("/usr/bin/env"),
-            ScopeSet::ALL,
-            Expiry::this_session(),
-        );
-        access.grant(&executable("/usr/bin/ls"), ScopeSet::ALL, Expiry::Never);
+        access.grant(&spawned("agent"), ScopeSet::ALL, Expiry::this_session());
+        access.grant(&spawned("lasting"), ScopeSet::ALL, Expiry::Never);
         access.grant(
             &AppKey::Interpreted {
                 interpreter: "/usr/bin/python3".into(),
@@ -382,7 +378,7 @@ mod tests {
         assert!(access.forget_session_grants());
         assert_eq!(
             access.grants.keys().collect::<Vec<_>>(),
-            ["exe:/usr/bin/ls"]
+            ["spawned:lasting"]
         );
     }
 

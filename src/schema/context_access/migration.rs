@@ -59,7 +59,7 @@ impl ContextAccess {
 
     fn grant_unless_decided(&mut self, key: &AppKey, scopes: ScopeSet) {
         if !self.is_decided(key) {
-            self.grant(key, scopes, Expiry::Never);
+            self.store_grant(key, scopes, Expiry::Never);
         }
     }
 }
@@ -133,6 +133,20 @@ mod tests {
             .map(|(key, _)| key.as_str())
             .collect::<Vec<_>>();
         assert_eq!(engines, ["spawned:crown-contextd"]);
+    }
+
+    #[test]
+    fn a_trusted_executable_that_is_not_installed_keeps_a_lasting_grant() {
+        let mut access = ContextAccess::default();
+        access.migrate_agents(&Agents {
+            trusted_executables: vec!["/usr/bin/crownos-not-installed".to_owned()],
+            ..Agents::default()
+        });
+        assert_eq!(
+            access.grants["exe:/usr/bin/crownos-not-installed"].expires,
+            Expiry::Never
+        );
+        assert!(!access.forget_session_grants());
     }
 
     #[test]
