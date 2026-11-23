@@ -44,6 +44,7 @@ pub mod bluetooth;
 pub mod camera;
 pub mod clipboard;
 pub mod compositor;
+pub mod context_access;
 pub mod display;
 pub mod files;
 pub mod glass;
@@ -73,6 +74,10 @@ pub use clipboard::{Clipboard, ClipboardKey};
 pub use compositor::{
     Compositor, CompositorKey, GamingOptions, OutputLayout, OutputSetting, OutputTransform, Vrr,
     WindowRule, WorkspaceMode, WorkspaceScope,
+};
+pub use context_access::{
+    AppKey, AppKeyError, ContextAccess, ContextAccessKey, ContextDecision, Expiry, FirstUsePolicy,
+    Grant, Scope, ScopeSet,
 };
 pub use display::{Display, DisplayKey};
 pub use files::{Files, FilesKey, SortKey, TagColor, ViewMode};
@@ -137,11 +142,13 @@ macro_rules! by_name {
 }
 
 by_name!(
+    Agents,
     Appearance,
     Bar,
     Bluetooth,
     Clipboard,
     Compositor,
+    ContextAccess,
     Display,
     Files,
     Input,
@@ -154,6 +161,7 @@ by_name!(
     Screenshot,
     Sound,
     Theme,
+    VisualContext,
     Voice,
     Wifi,
 );
