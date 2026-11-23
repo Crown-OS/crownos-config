@@ -29,6 +29,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 pub use app_key::{AppKey, AppKeyError};
+pub use resolve::{
+    FLATPAK_ENGINE, LAUNCHER_FILE, LauncherFileError, LauncherMap, USER_FLATPAK_ENGINE,
+};
 pub use scope::{Scope, ScopeSet};
 pub use session::current_session;
 

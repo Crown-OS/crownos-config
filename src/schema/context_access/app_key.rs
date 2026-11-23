@@ -54,7 +54,8 @@ impl AppKey {
     /// session only and never the scopes that capture or control others.
     /// The user can change an executable that is under `home`, or that is
     /// not owned by root, or that group or others can write, or whose
-    /// directory is such. An executable that cannot be checked counts too.
+    /// directory is such. An executable that cannot be checked counts too, and
+    /// so does a Flatpak app that the user installed.
     pub fn is_session_only(&self, home: Option<&Path>) -> bool {
         match self {
             Self::Interpreted { .. } => true,
@@ -65,7 +66,8 @@ impl AppKey {
                         .parent()
                         .is_none_or(|directory| !is_controlled_by_root(directory))
             }
-            Self::Sandboxed { .. } | Self::Spawned { .. } => false,
+            Self::Sandboxed { engine, .. } => engine == super::USER_FLATPAK_ENGINE,
+            Self::Spawned { .. } => false,
         }
     }
 
@@ -143,7 +145,7 @@ impl FromStr for AppKey {
     }
 }
 
-fn is_controlled_by_root(path: &Path) -> bool {
+pub(super) fn is_controlled_by_root(path: &Path) -> bool {
     std::fs::metadata(path)
         .is_ok_and(|metadata| metadata.uid() == 0 && metadata.mode() & 0o022 == 0)
 }

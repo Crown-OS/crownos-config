@@ -77,7 +77,8 @@ pub use compositor::{
 };
 pub use context_access::{
     AppKey, AppKeyError, CONTEXT_ENGINE_EXECUTABLE, ContextAccess, ContextAccessKey,
-    ContextDecision, Expiry, FirstUsePolicy, Grant, Scope, ScopeSet, allowed_scopes,
+    ContextDecision, Expiry, FLATPAK_ENGINE, FirstUsePolicy, Grant, LAUNCHER_FILE,
+    LauncherFileError, LauncherMap, Scope, ScopeSet, USER_FLATPAK_ENGINE, allowed_scopes,
 };
 pub use display::{Display, DisplayKey};
 pub use files::{Files, FilesKey, SortKey, TagColor, ViewMode};
