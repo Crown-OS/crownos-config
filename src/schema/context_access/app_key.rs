@@ -69,6 +69,21 @@ impl AppKey {
         }
     }
 
+    /// The name the user knows the app by: its app id, component, program
+    /// or script.
+    pub fn display_name(&self) -> String {
+        let path = match self {
+            Self::Sandboxed { app_id, .. } => return app_id.clone(),
+            Self::Spawned { component } => return component.clone(),
+            Self::HostExecutable { path } => path,
+            Self::Interpreted { script, .. } => script,
+        };
+        path.file_name().map_or_else(
+            || self.to_string(),
+            |name| name.to_string_lossy().into_owned(),
+        )
+    }
+
     pub const fn is_sandboxed(&self) -> bool {
         matches!(self, Self::Sandboxed { .. })
     }
@@ -241,6 +256,19 @@ mod tests {
                 app_id: "org.example.Notes".into(),
             })
         );
+    }
+
+    #[test]
+    fn apps_are_named_by_what_the_user_knows() {
+        let script = AppKey::Interpreted {
+            interpreter: "/usr/bin/python3".into(),
+            script: "/srv/bot.py".into(),
+        };
+        assert_eq!(script.display_name(), "bot.py");
+        let program = AppKey::HostExecutable {
+            path: "/usr/bin/agent".into(),
+        };
+        assert_eq!(program.display_name(), "agent");
     }
 
     #[test]

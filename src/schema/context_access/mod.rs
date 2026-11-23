@@ -4,6 +4,12 @@
 //! and agent cursor protocols, and [crown-contextd], which gates its API.
 //! Both read this file live and stop a client at once when its grant goes.
 //!
+//! For an unsandboxed app a grant records consent, not enforcement: any
+//! program of the same user can read the screen in other ways, or start an
+//! allowed program with `LD_PRELOAD` or through fork and exec. This holds for
+//! the Engine grant of `exe:/usr/bin/crown-contextd` too. For a sandboxed app
+//! the grant is enforced.
+//!
 //! A grant is stored under the text form of an [`AppKey`]. An application
 //! without a grant gets the default of its kind: `sandboxed_default` for a
 //! sandboxed client, `host_default` for every other client.
@@ -217,8 +223,8 @@ fn is_session_only(key: &AppKey) -> bool {
 }
 
 /// The scopes `key` may hold at all: a session-only key never gets Raw,
-/// Engine or PolicyAdmin, and of the executables only crown-contextd may
-/// run the engine.
+/// Engine or PolicyAdmin, and only crown-contextd, or a component the
+/// compositor starts, may run the engine.
 pub fn allowed_scopes(key: &AppKey) -> ScopeSet {
     restrict(key, ScopeSet::ALL, is_session_only(key))
 }
@@ -232,10 +238,11 @@ fn restrict(key: &AppKey, scopes: ScopeSet, session_only: bool) -> ScopeSet {
         scopes
     };
     match key {
-        AppKey::HostExecutable { path } if path.as_os_str() != CONTEXT_ENGINE_EXECUTABLE => {
+        AppKey::HostExecutable { path } if path.as_os_str() == CONTEXT_ENGINE_EXECUTABLE => scopes,
+        AppKey::Spawned { .. } => scopes,
+        AppKey::HostExecutable { .. } | AppKey::Sandboxed { .. } | AppKey::Interpreted { .. } => {
             scopes.without(Scope::Engine)
         }
-        _ => scopes,
     }
 }
 
@@ -310,7 +317,11 @@ mod tests {
         assert_eq!(access.decide(&key, at(0)), ContextDecision::Denied);
 
         access.grant(&key, ScopeSet::ALL, Expiry::Never);
-        assert_eq!(access.scopes_for(&key, at(0)), ScopeSet::ALL);
+        assert_eq!(
+            access.scopes_for(&key, at(0)),
+            ScopeSet::ALL.without(Scope::Engine),
+            "a sandboxed app never runs the engine"
+        );
         access.deny(&key);
         assert!(access.grants.is_empty());
         assert_eq!(access.decide(&key, at(0)), ContextDecision::Denied);

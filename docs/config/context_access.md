@@ -8,6 +8,12 @@ The consumers are [crownpositor], which gates the context, window control
 and agent cursor protocols, and [crown-contextd], which gates its API.
 Both read this file live and stop a client at once when its grant goes.
 
+For an unsandboxed app a grant records consent, not enforcement: any
+program of the same user can read the screen in other ways, or start an
+allowed program with `LD_PRELOAD` or through fork and exec. This holds for
+the Engine grant of `exe:/usr/bin/crown-contextd` too. For a sandboxed app
+the grant is enforced.
+
 A grant is stored under the text form of an `AppKey`. An application
 without a grant gets the default of its kind: `sandboxed_default` for a
 sandboxed client, `host_default` for every other client.
