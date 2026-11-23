@@ -12,8 +12,9 @@
 //!     [--list LABEL --item A --item B --initial INDEX]
 //! ```
 //!
-//! The dialog prints `option VALUE` for each extra question, then `grant` when the user said
-//! yes, and exits with success.
+//! The dialog prints `option VALUE` for each extra question. Then it prints `grant` and exits
+//! with 0 when the user said yes, or exits with 1 when the user said no. Any other exit means
+//! that nobody was asked.
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -25,6 +26,7 @@ pub const DIALOG_EXECUTABLE: &str = "/usr/lib/crownos-portal-dialog";
 const DIALOG_OVERRIDE: &str = "CROWN_CONSENT_DIALOG";
 const GRANT: &str = "grant";
 const OPTION_PREFIX: &str = "option ";
+const DECLINED: i32 = 1;
 const TRUE: &str = "true";
 const FALSE: &str = "false";
 
@@ -60,6 +62,11 @@ pub struct ConsentQuestion {
     pub deny: String,
     pub options: Vec<ConsentOption>,
 }
+
+/// The dialog could not ask: it failed to start or to show, or it was killed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("the consent dialog asked nobody (exit {0:?})")]
+pub struct NotAsked(pub Option<i32>);
 
 /// What the user said.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -142,10 +149,18 @@ impl ConsentQuestion {
         command
     }
 
-    /// The answer in the output of a dialog that exited with `succeeded`.
-    pub fn answer(&self, succeeded: bool, stdout: &[u8]) -> ConsentAnswer {
+    /// The answer in the output of a dialog that exited with `exit_code`.
+    ///
+    /// # Errors
+    ///
+    /// [`NotAsked`] when the exit code is neither a yes nor a no.
+    pub fn answer(&self, exit_code: Option<i32>, stdout: &[u8]) -> Result<ConsentAnswer, NotAsked> {
         let text = std::str::from_utf8(stdout).unwrap_or_default();
-        let granted = succeeded && text.lines().next_back().map(str::trim) == Some(GRANT);
+        let granted = match exit_code {
+            Some(0) => text.lines().next_back().map(str::trim) == Some(GRANT),
+            Some(DECLINED) => false,
+            other => return Err(NotAsked(other)),
+        };
         let values: Vec<String> = text
             .lines()
             .filter_map(|line| line.strip_prefix(OPTION_PREFIX))
@@ -156,10 +171,10 @@ impl ConsentQuestion {
             .checked_sub(self.options.len())
             .and_then(|first| values.get(first..))
             .map(<[String]>::to_vec);
-        ConsentAnswer {
+        Ok(ConsentAnswer {
             granted,
             option_values,
-        }
+        })
     }
 }
 
@@ -220,19 +235,26 @@ mod tests {
     }
 
     #[test]
-    fn a_grant_needs_success_and_the_grant_line() {
+    fn a_grant_needs_exit_0_and_the_grant_line() {
         let question = question();
-        let answer = question.answer(true, b"option true\noption 1\ngrant\n");
+        let answer = question
+            .answer(Some(0), b"option true\noption 1\ngrant\n")
+            .unwrap();
         assert!(answer.granted && answer.checked(0));
         assert_eq!(answer.chosen(1), Some(1));
-        assert!(
-            !question
-                .answer(false, b"option true\noption 1\ngrant\n")
-                .granted
-        );
-        let denied = question.answer(false, b"option false\noption 0\n");
+        assert!(!question.answer(Some(0), b"option true\n").unwrap().granted);
+        let denied = question
+            .answer(Some(1), b"option false\noption 0\n")
+            .unwrap();
         assert!(!denied.granted && !denied.checked(0));
-        let closed = question.answer(false, b"");
+        let closed = question.answer(Some(1), b"").unwrap();
         assert_eq!(closed.option_values, None);
+    }
+
+    #[test]
+    fn a_dialog_that_could_not_show_asked_nobody() {
+        let question = question();
+        assert_eq!(question.answer(Some(2), b""), Err(NotAsked(Some(2))));
+        assert_eq!(question.answer(None, b"grant\n"), Err(NotAsked(None)));
     }
 }
