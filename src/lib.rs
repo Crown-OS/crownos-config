@@ -10,11 +10,11 @@
 //! use crownos_config::{load, save, subscribe_key, subscribe_typed};
 //! use crownos_config::schema::{appearance, Appearance};
 //!
-//! // Read (missing file -> `Default`, and the default is written out so the
-//! // user has something to edit).
+//! // Read: the defaults of the installed release with the user's changes on
+//! // top. Nothing is written for a missing file.
 //! let mut appearance: Appearance = load(Appearance::SECTION);
 //!
-//! // Write (atomic: temp file + rename).
+//! // Write only the keys that the user changed (atomic: temp file + rename).
 //! appearance.dark_mode = true;
 //! save(Appearance::SECTION, &appearance).unwrap();
 //!
@@ -56,9 +56,12 @@ mod config;
 pub mod consent_dialog;
 mod key;
 pub mod keybind;
+mod layered;
+pub mod layers;
 mod parser;
 pub mod patch;
 pub mod schema;
+mod section_keys;
 pub mod system;
 mod util;
 mod watch;
@@ -69,6 +72,7 @@ pub mod xilem_view;
 pub use crate::config::{CONFIG_DIR_ENV, config_dir};
 pub use key::Key;
 pub use keybind::{KeyCode, Keybind, Mods};
+pub use layered::{USER_FILE_HEADER, merged_section_text, reset_keys};
 pub use parser::{load, save};
 pub use patch::{DynSection, PatchError, load_strict, read_key, write_keys};
 pub use util::{forget_written, hash_bytes, last_written, path_for, record_written};

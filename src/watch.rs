@@ -17,11 +17,11 @@
 //!
 //! Create, modify and rename events all count, because "save" means different
 //! things to different editors — many write a temp file and rename it over the
-//! target, which is a create+rename rather than a modify. Removals are
-//! ignored: a deleted config is not a new value, and the create event for
-//! whatever replaces it will arrive anyway.
+//! target, which is a create+rename rather than a modify. A removal also
+//! counts: without the user's file the section falls back to its defaults.
 //!
-//! Every candidate event ends in the same place: read the file, hash it, and
+//! Every candidate event ends in the same place: read the section as its
+//! default layers with the user's file on top, hash that text, and
 //! deliver only if that hash differs from both the last hash delivered for the
 //! section and the last hash [`save`](crate::save) wrote. A delivery with other
 //! bytes ends the echo window, so a later write that equals an old save is
@@ -43,7 +43,8 @@ use std::sync::{Arc, LazyLock, Mutex};
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::de::DeserializeOwned;
 
-use crate::util::{forget_written, hash_bytes, last_written, path_for};
+use crate::layered::merged_section_text;
+use crate::util::{forget_written, hash_bytes, last_written};
 use crate::{Key, config_dir};
 
 type Callback = Arc<dyn Fn(Vec<u8>) + Send + Sync>;
@@ -88,7 +89,11 @@ fn start_watcher() -> Option<RecommendedWatcher> {
 fn handle_event(event: &Event) {
     let interesting = matches!(
         event.kind,
-        EventKind::Create(_) | EventKind::Modify(_) | EventKind::Any | EventKind::Other
+        EventKind::Create(_)
+            | EventKind::Modify(_)
+            | EventKind::Remove(_)
+            | EventKind::Any
+            | EventKind::Other
     );
     if !interesting {
         return;
@@ -111,10 +116,10 @@ fn deliver(section: &str) {
         return;
     }
 
-    let Ok(bytes) = std::fs::read(path_for(section)) else {
-        // Mid-rename or removed; the follow-up event will carry the content.
+    let Some(text) = merged_section_text(section) else {
         return;
     };
+    let bytes = text.into_bytes();
     let hash = hash_bytes(&bytes);
 
     // Take the callbacks and release the lock before invoking any of them —

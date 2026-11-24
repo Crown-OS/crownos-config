@@ -11,8 +11,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 
+use crate::layered::read_section;
+use crate::layers::SectionFiles;
 use crate::parser::options;
-use crate::util::path_for;
 
 #[derive(Debug, Error)]
 pub enum PatchError {
@@ -70,20 +71,13 @@ pub fn from_ron<T: DeserializeOwned>(
         })
 }
 
-/// Read a section, treating a missing file as the default but refusing one
-/// that exists and does not parse — a writer must never replace a file the
-/// user is halfway through editing with defaults.
-pub fn load_strict<T: DeserializeOwned + Default>(section: &str) -> Result<T, PatchError> {
-    match std::fs::read_to_string(path_for(section)) {
-        Ok(text) => options()
-            .from_str(&text)
-            .map_err(|error| PatchError::Unparseable {
-                section: section.to_owned(),
-                message: error.to_string(),
-            }),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(T::default()),
-        Err(error) => Err(error.into()),
-    }
+/// Read a section like [`crate::load`], but refuse a user file that exists and
+/// does not parse: a writer must never replace a file that the user is halfway
+/// through editing.
+pub fn load_strict<T: DeserializeOwned + Serialize + Default>(
+    section: &str,
+) -> Result<T, PatchError> {
+    read_section(section, &SectionFiles::for_section(section)).map_err(|fallback| fallback.error)
 }
 
 pub(crate) fn edit_typed<T, R>(
@@ -107,7 +101,7 @@ pub(crate) fn read_typed<T, R>(
     read: impl FnOnce(&dyn DynSection) -> Result<R, PatchError>,
 ) -> Result<R, PatchError>
 where
-    T: DynSection + DeserializeOwned + Default,
+    T: DynSection + DeserializeOwned + Serialize + Default,
 {
     read(&load_strict::<T>(section)?)
 }

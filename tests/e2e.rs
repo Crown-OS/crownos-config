@@ -16,7 +16,8 @@ fn e2e() {
     let dir = setup_environment();
 
     check_paths(&dir);
-    check_load_materialises_default(&dir);
+    check_load_writes_nothing(&dir);
+    check_layered_section(&dir);
     check_save_load_round_trip();
     check_save_records_its_own_hash();
     check_external_edit_breaks_the_hash();
@@ -27,37 +28,137 @@ fn e2e() {
     clear_environment(&dir);
 }
 
+/// `<root>/config` is the user's directory, `<root>/distro` and
+/// `<root>/machine` are the default layers and `<root>/history` holds the
+/// defaults of earlier releases.
 fn setup_environment() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("crownos-config-test-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).expect("create temp config dir");
+    let root = std::env::temp_dir().join(format!("crownos-config-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    for directory in ["config", "distro", "machine", "history/0.2.0"] {
+        std::fs::create_dir_all(root.join(directory)).expect("create temp config dir");
+    }
+    let layers = std::env::join_paths([root.join("distro"), root.join("machine")])
+        .expect("join layer directories");
     // SAFETY: single-threaded section of a single test function; no other
     // test in this binary touches the environment.
-    unsafe { std::env::set_var(CONFIG_DIR_ENV, &dir) };
+    unsafe {
+        std::env::set_var(CONFIG_DIR_ENV, root.join("config"));
+        std::env::set_var(layers::CONFIG_LAYERS_ENV, layers);
+        std::env::set_var(layers::CONFIG_HISTORY_ENV, root.join("history"));
+    }
 
-    dir
+    root
 }
 
-fn clear_environment(dir: &Path) {
-    unsafe { std::env::remove_var(CONFIG_DIR_ENV) };
-    let _ = std::fs::remove_dir_all(dir);
+fn clear_environment(root: &Path) {
+    unsafe {
+        std::env::remove_var(CONFIG_DIR_ENV);
+        std::env::remove_var(layers::CONFIG_LAYERS_ENV);
+        std::env::remove_var(layers::CONFIG_HISTORY_ENV);
+    }
+    let _ = std::fs::remove_dir_all(root);
 }
 
 /// `CROWN_CONFIG_DIR` wins over the platform config dir, and a section maps
 /// to `<dir>/<section>.ron`.
-fn check_paths(dir: &Path) {
-    assert_eq!(config_dir(), dir);
-    assert_eq!(path_for(Wifi::SECTION), dir.join("wifi.ron"));
+fn check_paths(root: &Path) {
+    assert_eq!(config_dir(), root.join("config"));
+    assert_eq!(path_for(Wifi::SECTION), root.join("config/wifi.ron"));
 }
 
-/// A load of a missing file writes the default out.
-fn check_load_materialises_default(dir: &Path) {
+/// A load of a missing file gives the defaults and writes nothing, so each key
+/// follows the defaults of later releases.
+fn check_load_writes_nothing(root: &Path) {
     let loaded: Wifi = load(Wifi::SECTION);
     assert_eq!(loaded, Wifi::default());
+    assert!(!root.join("config/wifi.ron").exists());
+}
+
+/// The default layers, the user's changes on top, a save that writes only the
+/// user's changes, a system update of the defaults, and the reduction of a
+/// file that an earlier release wrote out in full.
+fn check_layered_section(root: &Path) {
+    let distro = root.join("distro/appearance.ron");
+    let user_file = path_for(Appearance::SECTION);
+    std::fs::write(&distro, "(accent: Blue, bar_height: 36)").expect("write distro layer");
+    std::fs::write(root.join("machine/appearance.ron"), "(bar_height: 44)")
+        .expect("write machine layer");
+
+    let mut appearance: Appearance = load(Appearance::SECTION);
+    assert_eq!(appearance.accent, AccentColor::Blue);
+    assert_eq!(appearance.bar_height, 44);
+    assert_eq!(appearance.transparency, Appearance::default().transparency);
+
+    appearance.dark_mode = !appearance.dark_mode;
+    let chosen_dark_mode = appearance.dark_mode;
+    save(Appearance::SECTION, &appearance).expect("save appearance");
+    let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
+    assert!(user_text.starts_with(USER_FILE_HEADER));
+    assert!(user_text.contains("dark_mode"));
     assert!(
-        dir.join("wifi.ron").exists(),
-        "load() should materialise the default file"
+        !user_text.contains("accent"),
+        "a default must not be written: {user_text}"
     );
+
+    std::fs::write(&distro, "(accent: Green, bar_height: 36)").expect("update distro layer");
+    let appearance: Appearance = load(Appearance::SECTION);
+    assert_eq!(
+        appearance.accent,
+        AccentColor::Green,
+        "an update changes a default"
+    );
+    assert_eq!(
+        appearance.dark_mode, chosen_dark_mode,
+        "the user's value wins"
+    );
+
+    std::fs::write(&distro, "(accent: Pink)").expect("update distro layer while the app runs");
+    save(Appearance::SECTION, &appearance).expect("save with the defaults of the last load");
+    let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
+    assert!(
+        !user_text.contains("accent"),
+        "a stale default must not be pinned: {user_text}"
+    );
+    let appearance: Appearance = load(Appearance::SECTION);
+    assert_eq!(appearance.accent, AccentColor::Pink);
+
+    std::fs::write(
+        root.join("history/0.2.0/appearance.ron"),
+        "(accent: Orange)",
+    )
+    .expect("write earlier release defaults");
+    let written_in_full = Appearance {
+        accent: AccentColor::Orange,
+        transparency: 0.33,
+        ..Appearance::default()
+    };
+    std::fs::write(&user_file, to_ron(&written_in_full)).expect("write a full user file");
+    let appearance: Appearance = load(Appearance::SECTION);
+    assert_eq!(
+        appearance.accent,
+        AccentColor::Pink,
+        "an earlier default is not a user change"
+    );
+    assert_eq!(appearance.transparency, 0.33, "a real user change stays");
+    let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
+    assert!(user_text.starts_with(USER_FILE_HEADER));
+    assert!(!user_text.contains("accent") && !user_text.contains("bar_height"));
+    assert!(user_text.contains("transparency"));
+    let reduced_once = read(Appearance::SECTION);
+    let _: Appearance = load(Appearance::SECTION);
+    assert_eq!(
+        read(Appearance::SECTION),
+        reduced_once,
+        "a second read changes nothing"
+    );
+
+    reset_keys(Appearance::SECTION, &["transparency"]).expect("reset transparency");
+    let appearance: Appearance = load(Appearance::SECTION);
+    assert_eq!(appearance.transparency, Appearance::default().transparency);
+
+    for file in [distro, root.join("machine/appearance.ron"), user_file] {
+        std::fs::remove_file(file).expect("remove layered test file");
+    }
 }
 
 fn check_save_load_round_trip() {
@@ -75,14 +176,14 @@ fn check_save_load_round_trip() {
     assert_eq!(round_tripped, appearance);
 }
 
-/// `save` records the hash of exactly what it put on disk, so a watcher
-/// comparing on-disk bytes against it sees a match and stays quiet.
+/// `save` records the hash of the merged text that the watcher reads after
+/// the write, so the watcher sees a match and stays quiet.
 fn check_save_records_its_own_hash() {
-    let on_disk = read(Appearance::SECTION);
+    let merged = merged_section_text(Appearance::SECTION).unwrap_or_default();
     assert_eq!(
         last_written(Appearance::SECTION),
-        Some(hash_bytes(&on_disk)),
-        "save() must record the hash of the bytes it wrote"
+        Some(hash_bytes(merged.as_bytes())),
+        "save() must record the hash of the merged text"
     );
 }
 
