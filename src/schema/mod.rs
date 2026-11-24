@@ -38,6 +38,7 @@
 //! ```
 
 pub mod agents;
+pub mod app_actions;
 pub mod appearance;
 pub mod bar;
 pub mod bluetooth;
@@ -64,6 +65,7 @@ pub mod voice;
 pub mod wifi;
 
 pub use agents::{AccessDecision, Agents, AgentsKey};
+pub use app_actions::{AppAction, AppActions, AppActionsKey};
 pub use appearance::{
     AccentColor, AnimationProfile, Appearance, AppearanceKey, CloseAnimation, MinimizeAnimation,
 };
@@ -84,7 +86,7 @@ pub use display::{Display, DisplayKey};
 pub use files::{Files, FilesKey, SortKey, TagColor, ViewMode};
 pub use glass::{EdgeGlow, Glass, GlassKey};
 pub use input::{Input, InputKey};
-pub use keybinds::{Binding, Keybinds, KeybindsKey};
+pub use keybinds::{AppKeybind, Binding, Keybinds, KeybindsKey};
 pub use lock::{
     Anchor, ClockFont, ClockFrame, ClockLayout, ClockLook, Lock, LockBackground, LockKey,
     LockSlotPosition, Placement, SlotPlacement,

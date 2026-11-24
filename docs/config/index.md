@@ -5,6 +5,7 @@ Every setting is one RON file under `~/.config/crownos/`, named after its sectio
 | Section | File | About | Read by |
 |---|---|---|---|
 | [agents](agents.md) | `agents.ron` | AI agents on this desktop: which programs may drive it, and which applications may show their UI to agents. | The consumer is [crownpositor], which reads this file live. |
+| [app_actions](app_actions.md) | `app_actions.ron` | The actions that applications registered through `crownos_keybind_v1`, and the chord each one has. | It writes this file each time an application registers or removes an action, or a chord changes. To change the chord of an action, add a row to `keybinds.app_keybinds`, not to this file: the compositor writes the row of a running action again at the next change. |
 | [appearance](appearance.md) | `appearance.ron` |  | every CrownOS app, through crownos-config |
 | [bar](bar.md) | `bar.ron` | The status bar: where it sits, how it is shaped and what is on it. | every CrownOS app, through crownos-config |
 | [bluetooth](bluetooth.md) | `bluetooth.ron` |  | every CrownOS app, through crownos-config |

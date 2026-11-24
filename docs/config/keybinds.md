@@ -24,6 +24,7 @@ takes effect without a restart or a re-login.
 | `launcher` | `Keybind` | `"Super+Space"` |  |
 | `dictation` | `Keybind` | `"Super+Ctrl"` |  |
 | `custom_keybinds` | `Vec<Binding>` | `[]` |  |
+| `app_keybinds` | `Vec<AppKeybind>` | `[]` |  |
 
 ## Types
 
@@ -34,6 +35,17 @@ takes effect without a restart or a re-login.
 | `keys` | `String` |  |
 | `action` | `String` |  |
 
+### `AppKeybind`
+
+The chord the user set for one action that an application registered
+through `crownos_keybind_v1`. `keys: "None"` removes the chord of the action.
+
+| Field | Type | What it does |
+|---|---|---|
+| `app_id` | `String` | The app_id the application registered the action with. |
+| `name` | `String` | The name of the action, for example `toggle-recording`. |
+| `keys` | `Keybind` | The chord the action gets in place of the one the application asked for. |
+
 ## Example
 
 The file with every key at its default:
@@ -43,5 +55,6 @@ The file with every key at its default:
     launcher: "Super+Space",
     dictation: "Super+Ctrl",
     custom_keybinds: [],
+    app_keybinds: [],
 )
 ```

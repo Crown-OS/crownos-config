@@ -23,11 +23,24 @@ pub struct Binding {
     pub action: String,
 }
 
+/// The chord the user set for one action that an application registered
+/// through `crownos_keybind_v1`. `keys: "None"` removes the chord of the action.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppKeybind {
+    /// The app_id the application registered the action with.
+    pub app_id: String,
+    /// The name of the action, for example `toggle-recording`.
+    pub name: String,
+    /// The chord the action gets in place of the one the application asked for.
+    pub keys: Keybind,
+}
+
 crate::section! {
     pub struct Keybinds in "keybinds", keys KeybindsKey {
         pub launcher as Launcher: Keybind = Keybind::SUPER_SPACE,
         pub dictation as Dictation: Keybind = Keybind::SUPER_CTRL,
         pub custom_keybinds as CustomKeybinds: Vec<Binding> = Vec::new(),
+        pub app_keybinds as AppKeybinds: Vec<AppKeybind> = Vec::new(),
     }
 }
 
@@ -87,6 +100,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn an_app_keybind_is_written_as_a_hand_editable_row() {
+        let keybinds = Keybinds {
+            app_keybinds: vec![AppKeybind {
+                app_id: "org.crownos.SoundRecorder".to_owned(),
+                name: "toggle-recording".to_owned(),
+                keys: "Super+Alt+R".parse().expect("parse chord"),
+            }],
+            ..Keybinds::default()
+        };
+        let text = ron::ser::to_string_pretty(&keybinds, Default::default()).expect("serialise");
+
+        assert!(text.contains("keys: \"Super+Alt+R\""), "got:\n{text}");
+        assert_eq!(
+            ron::from_str::<Keybinds>(&text).expect("parse back"),
+            keybinds
+        );
+    }
+
     /// Unbinding is a value the file can hold, not a parse failure — a user who
     /// clears the field in the panel gets `"None"` written out and read back.
     #[test]
@@ -96,6 +128,7 @@ mod tests {
             launcher: Keybind::NONE,
 
             custom_keybinds: Vec::new(),
+            app_keybinds: Vec::new(),
         };
         let text = ron::ser::to_string_pretty(&cleared, Default::default()).expect("serialise");
 
