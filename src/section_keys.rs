@@ -50,6 +50,12 @@ impl SectionKeys {
             .map(|(_, value)| value.as_str())
     }
 
+    pub fn entries(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.entries
+            .iter()
+            .map(|(name, value)| (name.as_str(), value.as_str()))
+    }
+
     pub fn contains(&self, key: &str) -> bool {
         self.get(key).is_some()
     }
@@ -324,9 +330,8 @@ mod tests {
         };
         let second = SectionKeys::of_value(&changed).unwrap_or_default();
         let differing: Vec<&str> = first
-            .entries
-            .iter()
-            .map(|(name, _)| name.as_str())
+            .entries()
+            .map(|(name, _)| name)
             .filter(|key| first.get(key) != second.get(key))
             .collect();
         assert_eq!(differing, ["accent"]);

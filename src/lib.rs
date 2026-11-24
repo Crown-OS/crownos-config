@@ -72,7 +72,7 @@ pub mod xilem_view;
 pub use crate::config::{CONFIG_DIR_ENV, config_dir};
 pub use key::Key;
 pub use keybind::{KeyCode, Keybind, Mods};
-pub use layered::{USER_FILE_HEADER, merged_section_text, reset_keys};
+pub use layered::{USER_FILE_HEADER, merged_section_text, reset_keys, validate_default_layer};
 pub use parser::{load, save};
 pub use patch::{DynSection, PatchError, load_strict, read_key, write_keys};
 pub use util::{forget_written, hash_bytes, last_written, path_for, record_written};

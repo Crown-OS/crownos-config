@@ -4,10 +4,12 @@
 mod loaded_defaults;
 mod migrate;
 mod read;
+mod validate;
 mod write;
 
 pub use read::merged_section_text;
 pub(crate) use read::read_section;
+pub use validate::validate_default_layer;
 pub use write::reset_keys;
 pub(crate) use write::write_section;
 
