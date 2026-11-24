@@ -145,6 +145,12 @@ crate::section! {
         pub primary_output as PrimaryOutput: Option<String> = None,
         pub outputs as Outputs: Vec<OutputSetting> = Vec::new(),
         pub output_layouts as OutputLayouts: Vec<OutputLayout> = Vec::new(),
+        /// The programs of the desktop session, from the distro defaults. The
+        /// compositor starts them before [`Compositor::startup`]. Add your own
+        /// programs to `startup`, so that a system update can still change
+        /// this list.
+        pub session_startup as SessionStartup: Vec<String> = Vec::new(),
+        /// Your own programs, started after `session_startup`.
         pub startup as Startup: Vec<String> = Vec::new(),
         pub gaming as Gaming: GamingOptions = GamingOptions::default(),
     }

@@ -28,7 +28,8 @@ internal types move around.
 | `primary_output` | `Option<String>` | `None` | The output that shows the dock and notifications by default, named like `OutputSetting::name`. When unset, the compositor selects one. |
 | `outputs` | `Vec<OutputSetting>` | `[]` |  |
 | `output_layouts` | `Vec<OutputLayout>` | `[]` |  |
-| `startup` | `Vec<String>` | `[]` |  |
+| `session_startup` | `Vec<String>` | `[]` | The programs of the desktop session, from the distro defaults. The compositor starts them before `Compositor::startup`. Add your own programs to `startup`, so that a system update can still change this list. |
+| `startup` | `Vec<String>` | `[]` | Your own programs, started after `session_startup`. |
 | `gaming` | `GamingOptions` | `(allow_tearing:true)` |  |
 
 Default `window_rules`:
@@ -177,6 +178,7 @@ The file with every key at its default:
     primary_output: None,
     outputs: [],
     output_layouts: [],
+    session_startup: [],
     startup: [],
     gaming: (allow_tearing:true),
 )
