@@ -7,7 +7,7 @@
 use std::fmt;
 
 use ron::value::RawValue;
-use serde::de::{self, Deserializer, MapAccess, Visitor};
+use serde::de::{self, Deserializer, MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
 
 use crate::parser::options;
@@ -97,6 +97,9 @@ impl SectionKeys {
             WrittenForm::Struct => ('(', ')'),
             WrittenForm::Map => ('{', '}'),
         };
+        if self.entries.is_empty() {
+            return format!("{open}{close}\n");
+        }
         let mut text = format!("{open}\n");
         for (name, value) in &self.entries {
             text.push_str("    ");
@@ -153,6 +156,14 @@ impl<'de> Visitor<'de> for SectionKeysVisitor {
 
     fn visit_unit<E: de::Error>(self) -> Result<SectionKeys, E> {
         Ok(SectionKeys::default())
+    }
+
+    /// RON reads `( )` with a space or a line break in it as an empty tuple.
+    fn visit_seq<A: SeqAccess<'de>>(self, mut access: A) -> Result<SectionKeys, A::Error> {
+        match access.next_element::<de::IgnoredAny>()? {
+            None => Ok(SectionKeys::default()),
+            Some(_) => Err(de::Error::invalid_type(de::Unexpected::Seq, &self)),
+        }
     }
 
     fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<SectionKeys, A::Error> {
@@ -234,6 +245,8 @@ mod tests {
     fn named_unit_and_implicit_some_files_parse() {
         assert_eq!(keys("Section(accent: Blue)").get("accent"), Some("Blue"));
         assert_eq!(keys("()"), SectionKeys::default());
+        assert_eq!(keys("// header\n(\n)\n"), SectionKeys::default());
+        assert_eq!(SectionKeys::default().to_ron(), "()\n");
         assert_eq!(
             keys("#![enable(implicit_some)]\n(height: 5)").get("height"),
             Some("5")

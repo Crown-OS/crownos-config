@@ -11,7 +11,7 @@ pub use read::merged_section_text;
 pub(crate) use read::read_section;
 pub use validate::validate_default_layer;
 pub use write::reset_keys;
-pub(crate) use write::write_section;
+pub(crate) use write::{write_section, write_section_edit};
 
 /// The first line of each user file that this crate writes.
 pub const USER_FILE_HEADER: &str = "// Only the settings that you changed. The CrownOS defaults are in /usr/share/crownos/defaults.";

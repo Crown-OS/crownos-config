@@ -11,7 +11,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 
-use crate::layered::read_section;
+use crate::layered::{read_section, write_section_edit};
 use crate::layers::SectionFiles;
 use crate::parser::options;
 
@@ -91,7 +91,12 @@ where
     let mut edited = original.clone();
     let result = edit(&mut edited)?;
     if edited != original {
-        crate::save(section, &edited)?;
+        write_section_edit(
+            section,
+            &SectionFiles::for_section(section),
+            &original,
+            &edited,
+        )?;
     }
     Ok(result)
 }

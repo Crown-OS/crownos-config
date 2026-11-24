@@ -181,6 +181,16 @@ fn check_layered_section(root: &Path) {
         "a file that the user writes after the reduction is never rewritten by a read"
     );
 
+    write_keys(Appearance::SECTION, [("blur_passes", "9")]).expect("a tool sets a key");
+    let before_tool = Appearance::default().blur_passes.to_string();
+    write_keys(Appearance::SECTION, [("blur_passes", before_tool.as_str())])
+        .expect("the tool sets the key back");
+    let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
+    assert!(
+        !user_text.contains("blur_passes"),
+        "a key that an edit sets back to its default leaves the file: {user_text}"
+    );
+
     reset_keys(Appearance::SECTION, &["transparency"]).expect("reset transparency");
     let appearance: Appearance = load(Appearance::SECTION);
     assert_eq!(appearance.transparency, Appearance::default().transparency);

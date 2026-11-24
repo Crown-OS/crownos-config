@@ -26,6 +26,28 @@ pub(crate) fn write_section<T: Serialize + DeserializeOwned + Default>(
     write_user_file(section, files, &user_changes)
 }
 
+/// Like [`write_section`] for an edit of single keys, such as a theme that
+/// sets a key and later sets it back: a key that the edit sets to its default
+/// leaves the user's file, so the file is the same as before the theme.
+pub(crate) fn write_section_edit<T: Serialize + DeserializeOwned + Default>(
+    section: &str,
+    files: &SectionFiles,
+    original: &T,
+    edited: &T,
+) -> io::Result<()> {
+    let original_keys = SectionKeys::of_value(original).map_err(invalid_data)?;
+    let mut user_changes = SectionKeys::of_value(edited).map_err(invalid_data)?;
+    let defaults =
+        loaded_defaults::recall(section).unwrap_or_else(|| current_canonical_defaults::<T>(files));
+    let existing_user_keys = existing_user_changes::<T>(section, files, &defaults);
+    user_changes.retain(|key, value| {
+        let is_default = defaults.get(key) == Some(value);
+        let edited_now = original_keys.get(key) != Some(value);
+        !is_default || (existing_user_keys.contains(key) && !edited_now)
+    });
+    write_user_file(section, files, &user_changes)
+}
+
 /// Removes `keys` from the user's file, so that they follow the defaults again.
 pub fn reset_keys(section: &str, keys: &[&str]) -> io::Result<()> {
     let files = SectionFiles::for_section(section);
