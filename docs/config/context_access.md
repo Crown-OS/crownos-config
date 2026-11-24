@@ -12,7 +12,13 @@ For an unsandboxed app a grant records consent, not enforcement: any
 program of the same user can read the screen in other ways, or start an
 allowed program with `LD_PRELOAD` or through fork and exec. This holds for
 the Engine grant of `exe:/usr/bin/crown-contextd` too. For a sandboxed app
-the grant is enforced.
+the grant is enforced for the key that the sandbox claims.
+
+Limit: a sandboxed key is the sandbox's own claim. A host process can open a
+security context that claims `org.flatpak` and any app id, with a forged
+`.flatpak-info`, and `flatpak run --command` runs other code under the app's
+identity. Treat a Flatpak key as a name, not as proof; crownos-secretsd types
+no secret into a Flatpak window for this reason.
 
 A grant is stored under the text form of an `AppKey`. An application
 without a grant gets the default of its kind: `sandboxed_default` for a
@@ -30,7 +36,7 @@ sandboxed client, `host_default` for every other client.
 | `host_default` | `FirstUsePolicy` | `Ask` | What every other application without a grant gets. |
 | `grants` | `BTreeMap<String, Grant>` | `{}` | Grants by application key, such as `exe:/usr/bin/crown-contextd` or `sandbox:flatpak/org.example.Notes`. |
 | `denied` | `Vec<String>` | `[]` | Application keys the user refused. A refusal is stronger than a grant. |
-| `raw_reauth_minutes` | `u32` | `5` | Minutes after which the user must authenticate again before an application gets screen pixels through the `Raw` scope. It does not apply to the `Engine` scope. |
+| `raw_reauth_minutes` | `u32` | `5` | Minutes after which the user must authenticate again before an application gets raw text through the `Raw` scope. It does not apply to the `Engine` scope. |
 | `migrated_agents` | `bool` | `false` | Set when the grants of `agents.ron` were copied into this file, so that a grant the user removes later does not come back. |
 
 ## Types
@@ -61,7 +67,7 @@ One thing an application may do with screen context.
 |---|---|
 | `Metadata` | Window list, app ids, focus, placement and activity counts. No titles. |
 | `Text` | Window titles, selection types and recognized text. |
-| `Raw` | Screen pixels. The user authenticates again after `raw_reauth_minutes`. |
+| `Raw` | Raw text: unredacted search results, snippets and exports. No pixels are ever stored. The user authenticates again after `raw_reauth_minutes`. |
 | `MemoryWrite` | Add to the context memory. |
 | `MemoryDelete` | Delete from the context memory. |
 | `PolicyAdmin` | Change exclusions, retention and the grants of other apps. |
