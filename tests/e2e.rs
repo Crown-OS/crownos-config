@@ -66,12 +66,22 @@ fn check_paths(root: &Path) {
     assert_eq!(path_for(Wifi::SECTION), root.join("config/wifi.ron"));
 }
 
-/// A load of a missing file gives the defaults and writes nothing, so each key
-/// follows the defaults of later releases.
+/// A load of a missing file gives the defaults and writes no section file, so
+/// each key follows the defaults of later releases. A file that the user
+/// writes after that is never reduced.
 fn check_load_writes_nothing(root: &Path) {
     let loaded: Wifi = load(Wifi::SECTION);
     assert_eq!(loaded, Wifi::default());
     assert!(!root.join("config/wifi.ron").exists());
+
+    let hand_written = format!("({})\n", "enabled: true");
+    std::fs::write(root.join("config/wifi.ron"), &hand_written).expect("write wifi");
+    let _: Wifi = load(Wifi::SECTION);
+    assert_eq!(
+        std::fs::read_to_string(root.join("config/wifi.ron")).unwrap_or_default(),
+        hand_written
+    );
+    std::fs::remove_file(root.join("config/wifi.ron")).expect("remove wifi");
 }
 
 /// The default layers, the user's changes on top, a save that writes only the
@@ -133,6 +143,9 @@ fn check_layered_section(root: &Path) {
         ..Appearance::default()
     };
     std::fs::write(&user_file, to_ron(&written_in_full)).expect("write a full user file");
+    let reduced_marker = root.join("config/.layered/appearance");
+    assert!(reduced_marker.exists(), "the first read marks the section");
+    std::fs::remove_file(&reduced_marker).expect("make the home look like one from before layers");
     let appearance: Appearance = load(Appearance::SECTION);
     assert_eq!(
         appearance.accent,
@@ -156,6 +169,16 @@ fn check_layered_section(root: &Path) {
         read(Appearance::SECTION),
         reduced_once,
         "a second read changes nothing"
+    );
+
+    let hand_written = "// my own file\n(accent: Pink, transparency: 0.5)\n";
+    std::fs::write(&user_file, hand_written).expect("write the user's own file");
+    let appearance: Appearance = load(Appearance::SECTION);
+    assert_eq!(appearance.transparency, 0.5);
+    assert_eq!(
+        std::fs::read_to_string(&user_file).unwrap_or_default(),
+        hand_written,
+        "a file that the user writes after the reduction is never rewritten by a read"
     );
 
     reset_keys(Appearance::SECTION, &["transparency"]).expect("reset transparency");

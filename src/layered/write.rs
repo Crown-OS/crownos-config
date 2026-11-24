@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use super::read::read_default_layers;
-use super::{USER_FILE_HEADER, has_user_file_header, loaded_defaults, migrate};
+use super::{USER_FILE_HEADER, loaded_defaults, migrate};
 use crate::layers::SectionFiles;
 use crate::section_keys::SectionKeys;
 use crate::util::{hash_bytes, record_written};
@@ -70,7 +70,7 @@ fn existing_user_changes<T: Serialize + DeserializeOwned + Default>(
     let Ok(user_keys) = SectionKeys::parse(&text) else {
         return SectionKeys::default();
     };
-    if has_user_file_header(&text) {
+    if migrate::is_reduced(files) {
         return user_keys;
     }
     migrate::reduce_to_user_changes::<T>(

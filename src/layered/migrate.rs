@@ -1,7 +1,9 @@
 //! Earlier releases copied the distro files into each new home and wrote out
 //! every field the first time an app ran. Such a file pins each default for
 //! ever. The first read reduces it to the keys whose value differs from the
-//! current defaults and from the defaults of each earlier release. The file
+//! current defaults and from the defaults of each earlier release. A marker
+//! outside the file records the reduction, also for a section that had no
+//! file, so a file that the user writes after that keeps every key. The file
 //! as it was stays beside it as `<section>.ron.before-layers`: a rollback to a
 //! release without layers reads only the user's file, and the user can copy
 //! it back.
@@ -46,9 +48,27 @@ pub(super) fn reduce_to_user_changes<T: DeserializeOwned + Serialize + Default>(
     let written = keep_file_before_layers(files)
         .and_then(|()| write_user_file(section, files, &user_changes));
     match written {
-        Ok(()) => user_changes,
+        Ok(()) => {
+            mark_reduced(files);
+            user_changes
+        }
         Err(_) => user_keys,
     }
+}
+
+pub(super) fn is_reduced(files: &SectionFiles) -> bool {
+    files.reduced_marker.exists()
+}
+
+/// A failure only means that the next read tries the reduction again.
+pub(super) fn mark_reduced(files: &SectionFiles) {
+    if is_reduced(files) {
+        return;
+    }
+    if let Some(directory) = files.reduced_marker.parent() {
+        let _ = std::fs::create_dir_all(directory);
+    }
+    let _ = std::fs::write(&files.reduced_marker, "");
 }
 
 fn keep_file_before_layers(files: &SectionFiles) -> io::Result<()> {
@@ -63,8 +83,8 @@ fn earlier_release_defaults<T: DeserializeOwned + Serialize + Default>(
     files: &SectionFiles,
 ) -> impl Iterator<Item = SectionKeys> {
     files
-        .earlier_release_defaults
-        .iter()
+        .earlier_release_defaults()
+        .into_iter()
         .filter_map(|file| std::fs::read_to_string(file).ok())
         .filter_map(|text| SectionKeys::parse(&text).ok()?.parse_value::<T>().ok())
         .filter_map(|defaults| SectionKeys::of_value(&defaults).ok())

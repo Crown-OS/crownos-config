@@ -7,6 +7,7 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
+use crate::config_dir;
 use crate::util::path_for;
 
 /// Replaces the default layer directories, lowest first, separated like `PATH`.
@@ -27,12 +28,19 @@ pub const MACHINE_DEFAULTS_DIR: &str = "/etc/crownos/defaults";
 /// to the keys that differ from all of them.
 pub const DEFAULTS_HISTORY_DIR: &str = "/usr/share/crownos/defaults-history";
 
+/// The directory in the config directory that holds one empty file for each
+/// section whose user file is reduced to the user's changes, or had no file.
+const REDUCED_SECTIONS_DIR: &str = ".layered";
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SectionFiles {
     /// Lowest first.
     pub default_layers: Vec<PathBuf>,
     pub user: PathBuf,
-    pub earlier_release_defaults: Vec<PathBuf>,
+    /// Exists when the user file needs no reduction: a file that the user
+    /// writes after that keeps every key.
+    pub reduced_marker: PathBuf,
+    pub defaults_history: PathBuf,
 }
 
 impl SectionFiles {
@@ -45,8 +53,18 @@ impl SectionFiles {
         Self {
             default_layers,
             user: path_for(section),
-            earlier_release_defaults: earlier_release_files(&history_directory(), &file_name),
+            reduced_marker: config_dir().join(REDUCED_SECTIONS_DIR).join(section),
+            defaults_history: history_directory(),
         }
+    }
+
+    /// The distro files of this section in earlier releases. Read only for a
+    /// reduction, because the history has one directory for each release.
+    pub fn earlier_release_defaults(&self) -> Vec<PathBuf> {
+        let Some(file_name) = self.user.file_name() else {
+            return Vec::new();
+        };
+        earlier_release_files(&self.defaults_history, Path::new(file_name))
     }
 }
 
@@ -69,7 +87,7 @@ fn history_directory() -> PathBuf {
         .unwrap_or_else(|| DEFAULTS_HISTORY_DIR.into())
 }
 
-fn earlier_release_files(history: &Path, file_name: &str) -> Vec<PathBuf> {
+fn earlier_release_files(history: &Path, file_name: &Path) -> Vec<PathBuf> {
     let Ok(releases) = std::fs::read_dir(history) else {
         return Vec::new();
     };
@@ -102,6 +120,9 @@ mod tests {
 
     #[test]
     fn a_missing_history_directory_gives_no_files() {
-        assert!(earlier_release_files(Path::new("/nonexistent/history"), "dock.ron").is_empty());
+        assert!(
+            earlier_release_files(Path::new("/nonexistent/history"), Path::new("dock.ron"))
+                .is_empty()
+        );
     }
 }

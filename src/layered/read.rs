@@ -3,7 +3,7 @@ use std::io;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{has_user_file_header, loaded_defaults, migrate};
+use super::{loaded_defaults, migrate};
 use crate::layers::SectionFiles;
 use crate::patch::PatchError;
 use crate::section_keys::SectionKeys;
@@ -28,7 +28,10 @@ pub(crate) fn read_section<T: DeserializeOwned + Serialize + Default>(
 
     let user_text = match std::fs::read_to_string(&files.user) {
         Ok(text) => text,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(defaults),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            migrate::mark_reduced(files);
+            return Ok(defaults);
+        }
         Err(error) => {
             return Err(Fallback {
                 defaults,
@@ -45,7 +48,7 @@ pub(crate) fn read_section<T: DeserializeOwned + Serialize + Default>(
             });
         }
     };
-    let user_keys = if has_user_file_header(&user_text) {
+    let user_keys = if migrate::is_reduced(files) {
         user_keys
     } else {
         migrate::reduce_to_user_changes::<T>(
