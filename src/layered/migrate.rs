@@ -1,9 +1,12 @@
 //! Earlier releases copied the distro files into each new home and wrote out
 //! every field the first time an app ran. Such a file pins each default for
 //! ever. The first read reduces it to the keys whose value differs from the
-//! current defaults and from the defaults of each earlier release.
+//! current defaults and from the defaults of each earlier release. The file
+//! as it was stays beside it as `<section>.ron.before-layers`: a rollback to a
+//! release without layers reads only the user's file, and the user can copy
+//! it back.
 
-use std::iter;
+use std::{io, iter};
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -11,6 +14,8 @@ use serde::de::DeserializeOwned;
 use super::write::write_user_file;
 use crate::layers::SectionFiles;
 use crate::section_keys::SectionKeys;
+
+const BEFORE_LAYERS_EXTENSION: &str = "ron.before-layers";
 
 /// The user's changes after the reduction, or `user_keys` unchanged when the
 /// reduction cannot parse the section or cannot write the result.
@@ -38,10 +43,20 @@ pub(super) fn reduce_to_user_changes<T: DeserializeOwned + Serialize + Default>(
                 .iter()
                 .any(|defaults| defaults.get(key) == Some(value))
     });
-    match write_user_file(section, files, &user_changes) {
+    let written = keep_file_before_layers(files)
+        .and_then(|()| write_user_file(section, files, &user_changes));
+    match written {
         Ok(()) => user_changes,
         Err(_) => user_keys,
     }
+}
+
+fn keep_file_before_layers(files: &SectionFiles) -> io::Result<()> {
+    let copy = files.user.with_extension(BEFORE_LAYERS_EXTENSION);
+    if copy.exists() {
+        return Ok(());
+    }
+    std::fs::copy(&files.user, copy).map(drop)
 }
 
 fn earlier_release_defaults<T: DeserializeOwned + Serialize + Default>(

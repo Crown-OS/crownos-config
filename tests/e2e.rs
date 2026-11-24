@@ -144,6 +144,12 @@ fn check_layered_section(root: &Path) {
     assert!(user_text.starts_with(USER_FILE_HEADER));
     assert!(!user_text.contains("accent") && !user_text.contains("bar_height"));
     assert!(user_text.contains("transparency"));
+    let kept_copy = user_file.with_extension("ron.before-layers");
+    assert_eq!(
+        std::fs::read_to_string(&kept_copy).unwrap_or_default(),
+        to_ron(&written_in_full),
+        "the file as it was stays beside it"
+    );
     let reduced_once = read(Appearance::SECTION);
     let _: Appearance = load(Appearance::SECTION);
     assert_eq!(
@@ -156,7 +162,12 @@ fn check_layered_section(root: &Path) {
     let appearance: Appearance = load(Appearance::SECTION);
     assert_eq!(appearance.transparency, Appearance::default().transparency);
 
-    for file in [distro, root.join("machine/appearance.ron"), user_file] {
+    for file in [
+        distro,
+        root.join("machine/appearance.ron"),
+        user_file,
+        kept_copy,
+    ] {
         std::fs::remove_file(file).expect("remove layered test file");
     }
 }
