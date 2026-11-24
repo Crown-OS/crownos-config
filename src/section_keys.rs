@@ -1,6 +1,8 @@
 //! A section file as its top-level keys, each with the RON text of its value.
 //! The text is kept as written, so a layer can replace single keys of a lower
 //! layer without parsing the values into a type that would lose enum variants.
+//! Most sections are structs, `(key: value)`. A section that is a map, such as
+//! the settings of a plugin, is written as a map again, `{"key": value}`.
 
 use std::fmt;
 
@@ -10,14 +12,28 @@ use serde::{Deserialize, Serialize};
 
 use crate::parser::options;
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+enum WrittenForm {
+    #[default]
+    Struct,
+    Map,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct SectionKeys {
     entries: Vec<(String, String)>,
+    form: WrittenForm,
 }
 
 impl SectionKeys {
     pub fn parse(text: &str) -> Result<Self, ron::error::SpannedError> {
-        options().from_str(text)
+        let keys: Self = options().from_str(text)?;
+        let form = if starts_as_map(text) {
+            WrittenForm::Map
+        } else {
+            WrittenForm::Struct
+        };
+        Ok(Self { form, ..keys })
     }
 
     /// The keys of `value` as [`crate::save`] writes them. Two values give the
@@ -40,6 +56,9 @@ impl SectionKeys {
 
     /// Each key of `higher` replaces the same key here, or is added at the end.
     pub fn overlay(&mut self, higher: Self) {
+        if self.entries.is_empty() {
+            self.form = higher.form;
+        }
         for (name, value) in higher.entries {
             match self
                 .entries
@@ -68,16 +87,46 @@ impl SectionKeys {
     }
 
     pub fn to_ron(&self) -> String {
-        let mut text = String::from("(\n");
+        let (open, close) = match self.form {
+            WrittenForm::Struct => ('(', ')'),
+            WrittenForm::Map => ('{', '}'),
+        };
+        let mut text = format!("{open}\n");
         for (name, value) in &self.entries {
             text.push_str("    ");
-            text.push_str(name);
+            match self.form {
+                WrittenForm::Struct => text.push_str(name),
+                WrittenForm::Map => text.push_str(&quoted(name)),
+            }
             text.push_str(": ");
             text.push_str(value);
             text.push_str(",\n");
         }
-        text.push_str(")\n");
+        text.push(close);
+        text.push('\n');
         text
+    }
+}
+
+fn quoted(name: &str) -> String {
+    ron::to_string(name).unwrap_or_else(|_| format!("{name:?}"))
+}
+
+/// True when the first token after comments and `#![enable(..)]` attributes
+/// opens a map.
+fn starts_as_map(text: &str) -> bool {
+    let mut rest = text;
+    loop {
+        rest = rest.trim_start();
+        if let Some(comment) = rest.strip_prefix("//") {
+            rest = comment.split_once('\n').map_or("", |(_, after)| after);
+        } else if let Some(comment) = rest.strip_prefix("/*") {
+            rest = comment.split_once("*/").map_or("", |(_, after)| after);
+        } else if let Some(attribute) = rest.strip_prefix("#!") {
+            rest = attribute.split_once(']').map_or("", |(_, after)| after);
+        } else {
+            return rest.starts_with('{');
+        }
     }
 }
 
@@ -105,6 +154,7 @@ impl<'de> Visitor<'de> for SectionKeysVisitor {
         while let Some((name, value)) = access.next_entry::<String, Box<RawValue>>()? {
             keys.overlay(SectionKeys {
                 entries: vec![(name, value.trim().get_ron().to_owned())],
+                form: WrittenForm::Struct,
             });
         }
         Ok(keys)
@@ -182,6 +232,33 @@ mod tests {
             keys("#![enable(implicit_some)]\n(height: 5)").get("height"),
             Some("5")
         );
+    }
+
+    #[test]
+    fn a_map_section_is_written_as_a_map_again() {
+        use std::collections::BTreeMap;
+
+        let settings: BTreeMap<String, u32> =
+            [("volume level".to_owned(), 3), ("speed".to_owned(), 7)].into();
+        let canonical = SectionKeys::of_value(&settings).unwrap_or_default();
+        assert_eq!(canonical.get("volume level"), Some("3"));
+        let written = canonical.to_ron();
+        assert!(written.starts_with('{'), "{written}");
+        let read_back: BTreeMap<String, u32> = canonical.parse_value().unwrap_or_default();
+        assert_eq!(read_back, settings);
+
+        let merged = SectionKeys::default().overlaid(keys("// note\n{\"speed\": 9}"));
+        let merged: BTreeMap<String, u32> = merged.parse_value().unwrap_or_default();
+        assert_eq!(merged.get("speed"), Some(&9));
+    }
+
+    #[test]
+    fn the_form_is_found_after_comments_and_attributes() {
+        assert!(starts_as_map(
+            "/* a */ // b\n#![enable(implicit_some)]\n {}"
+        ));
+        assert!(!starts_as_map("// {\n(a: 1)"));
+        assert!(!starts_as_map("Section(a: 1)"));
     }
 
     #[test]
