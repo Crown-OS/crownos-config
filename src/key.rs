@@ -99,13 +99,31 @@ pub trait Key: Copy + Send + Sync + 'static {
 /// the identifier `dark_mode` — there is no stable way to concatenate or
 /// re-case identifiers without a proc macro. The upside of writing it out is
 /// that the key type is a normal, greppable, go-to-definition-able name.
+/// The text of each `#[doc]` attribute, in order. Used by [`section!`].
+#[doc(hidden)]
+#[macro_export]
+macro_rules! doc_lines {
+    (@found [$($found:expr,)*]) => {
+        &[$($found,)*]
+    };
+    (@found [$($found:expr,)*] [doc = $doc:literal] $($rest:tt)*) => {
+        $crate::doc_lines!(@found [$($found,)* $doc,] $($rest)*)
+    };
+    (@found [$($found:expr,)*] [$($other:tt)*] $($rest:tt)*) => {
+        $crate::doc_lines!(@found [$($found,)*] $($rest)*)
+    };
+    ($($attribute:tt)*) => {
+        $crate::doc_lines!(@found [] $($attribute)*)
+    };
+}
+
 #[macro_export]
 macro_rules! section {
     (
         $(#[$section_meta:meta])*
         $vis:vis struct $Section:ident in $file:literal, keys $Keys:ident {
             $(
-                $(#[$field_meta:meta])*
+                $(#[$($field_attribute:tt)*])*
                 $field_vis:vis $field:ident as $Key:ident : $ty:ty = $default:expr
             ),* $(,)?
         }
@@ -118,7 +136,7 @@ macro_rules! section {
         #[serde(default)]
         $vis struct $Section {
             $(
-                $(#[$field_meta])*
+                $(#[$($field_attribute)*])*
                 $field_vis $field: $ty,
             )*
         }
@@ -126,6 +144,12 @@ macro_rules! section {
         impl $Section {
             #[doc = concat!("File-name stem of this section: `", $file, ".ron`.")]
             pub const SECTION: &'static str = $file;
+
+            /// Each key with the lines of its doc comment, for the commented
+            /// defaults in the user's file.
+            pub const KEY_DOCS: &'static [(&'static str, &'static [&'static str])] = &[
+                $((stringify!($field), $crate::doc_lines!($([$($field_attribute)*])*)),)*
+            ];
         }
 
         impl $crate::DynSection for $Section {

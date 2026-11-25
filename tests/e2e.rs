@@ -16,7 +16,7 @@ fn e2e() {
     let dir = setup_environment();
 
     check_paths(&dir);
-    check_load_writes_nothing(&dir);
+    check_load_writes_commented_defaults(&dir);
     check_layered_section(&dir);
     check_save_load_round_trip();
     check_save_records_its_own_hash();
@@ -66,13 +66,17 @@ fn check_paths(root: &Path) {
     assert_eq!(path_for(Wifi::SECTION), root.join("config/wifi.ron"));
 }
 
-/// A load of a missing file gives the defaults and writes no section file, so
-/// each key follows the defaults of later releases. A file that the user
-/// writes after that is never reduced.
-fn check_load_writes_nothing(root: &Path) {
+/// A load of a missing file gives the defaults and writes them as comments
+/// only, so each key follows the defaults of later releases. A file that the
+/// user writes by hand is never reduced or written again by a load.
+fn check_load_writes_commented_defaults(root: &Path) {
     let loaded: Wifi = load(Wifi::SECTION);
     assert_eq!(loaded, Wifi::default());
-    assert!(!root.join("config/wifi.ron").exists());
+    let written = std::fs::read_to_string(root.join("config/wifi.ron")).unwrap_or_default();
+    assert!(written.starts_with(USER_FILE_HEADER), "{written}");
+    assert!(written.contains("    // enabled: "), "{written}");
+    assert_eq!(load::<Wifi>(Wifi::SECTION), Wifi::default());
+    std::fs::remove_file(root.join("config/wifi.ron")).expect("remove wifi");
 
     let hand_written = format!("({})\n", "enabled: true");
     std::fs::write(root.join("config/wifi.ron"), &hand_written).expect("write wifi");
@@ -104,9 +108,9 @@ fn check_layered_section(root: &Path) {
     save(Appearance::SECTION, &appearance).expect("save appearance");
     let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
     assert!(user_text.starts_with(USER_FILE_HEADER));
-    assert!(user_text.contains("dark_mode"));
+    assert!(active(&user_text).contains("dark_mode"));
     assert!(
-        !user_text.contains("accent"),
+        !active(&user_text).contains("accent"),
         "a default must not be written: {user_text}"
     );
 
@@ -121,12 +125,18 @@ fn check_layered_section(root: &Path) {
         appearance.dark_mode, chosen_dark_mode,
         "the user's value wins"
     );
+    let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
+    assert!(
+        user_text.contains("    // accent: Green,"),
+        "the comments show the new default: {user_text}"
+    );
+    assert!(active(&user_text).contains("dark_mode"));
 
     std::fs::write(&distro, "(accent: Pink)").expect("update distro layer while the app runs");
     save(Appearance::SECTION, &appearance).expect("save with the defaults of the last load");
     let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
     assert!(
-        !user_text.contains("accent"),
+        !active(&user_text).contains("accent"),
         "a stale default must not be pinned: {user_text}"
     );
     let appearance: Appearance = load(Appearance::SECTION);
@@ -155,8 +165,8 @@ fn check_layered_section(root: &Path) {
     assert_eq!(appearance.transparency, 0.33, "a real user change stays");
     let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
     assert!(user_text.starts_with(USER_FILE_HEADER));
-    assert!(!user_text.contains("accent") && !user_text.contains("bar_height"));
-    assert!(user_text.contains("transparency"));
+    assert!(!active(&user_text).contains("accent") && !active(&user_text).contains("bar_height"));
+    assert!(active(&user_text).contains("transparency"));
     let kept_copy = user_file.with_extension("ron.before-layers");
     assert_eq!(
         std::fs::read_to_string(&kept_copy).unwrap_or_default(),
@@ -187,7 +197,7 @@ fn check_layered_section(root: &Path) {
         .expect("the tool sets the key back");
     let user_text = String::from_utf8(read(Appearance::SECTION)).unwrap_or_default();
     assert!(
-        !user_text.contains("blur_passes"),
+        !active(&user_text).contains("blur_passes"),
         "a key that an edit sets back to its default leaves the file: {user_text}"
     );
 
@@ -403,4 +413,12 @@ fn read(section: &str) -> Vec<u8> {
 
 fn to_ron<T: serde::Serialize>(value: &T) -> String {
     ron::ser::to_string_pretty(value, ron::ser::PrettyConfig::default()).expect("serialise")
+}
+
+/// The lines of a user file that are not comments.
+fn active(text: &str) -> String {
+    text.lines()
+        .filter(|line| !line.trim_start().starts_with("//"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }

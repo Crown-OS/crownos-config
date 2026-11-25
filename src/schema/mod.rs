@@ -112,6 +112,22 @@ macro_rules! by_name {
         /// Every section name, i.e. every file `crownos-config` owns.
         pub const SECTIONS: &[&str] = &[$(<$Section>::SECTION,)*];
 
+        /// Each key of `section` with the lines of its doc comment; empty for
+        /// a section that this crate does not declare.
+        pub fn key_docs(section: &str) -> &'static [(&'static str, &'static [&'static str])] {
+            $(if section == <$Section>::SECTION {
+                return <$Section>::KEY_DOCS;
+            })*
+            &[]
+        }
+
+        /// Writes the user's file of each section with every default commented
+        /// out, when the file is missing or its defaults are out of date. The
+        /// compositor calls it at the start of each session.
+        pub fn write_user_files() {
+            $(let _: $Section = crate::load(<$Section>::SECTION);)*
+        }
+
         /// Load the section called `section` and hand it to `read` by name.
         pub fn read_section<R>(
             section: &str,

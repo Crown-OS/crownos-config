@@ -14,7 +14,8 @@
 //! // top. Nothing is written for a missing file.
 //! let mut appearance: Appearance = load(Appearance::SECTION);
 //!
-//! // Write only the keys that the user changed (atomic: temp file + rename).
+//! // Write the keys that the user changed, and the others as commented defaults
+//! // (atomic: temp file + rename).
 //! appearance.dark_mode = true;
 //! save(Appearance::SECTION, &appearance).unwrap();
 //!

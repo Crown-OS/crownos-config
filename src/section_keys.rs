@@ -92,28 +92,39 @@ impl SectionKeys {
         options().from_str(&self.to_ron())
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
+
     pub fn to_ron(&self) -> String {
-        let (open, close) = match self.form {
-            WrittenForm::Struct => ('(', ')'),
-            WrittenForm::Map => ('{', '}'),
-        };
+        let (open, close) = self.brackets();
         if self.entries.is_empty() {
             return format!("{open}{close}\n");
         }
         let mut text = format!("{open}\n");
         for (name, value) in &self.entries {
-            text.push_str("    ");
-            match self.form {
-                WrittenForm::Struct => text.push_str(name),
-                WrittenForm::Map => text.push_str(&quoted(name)),
-            }
-            text.push_str(": ");
-            text.push_str(value);
-            text.push_str(",\n");
+            text.push_str(&self.entry_text(name, value));
         }
         text.push(close);
         text.push('\n');
         text
+    }
+
+    pub fn brackets(&self) -> (char, char) {
+        match self.form {
+            WrittenForm::Struct => ('(', ')'),
+            WrittenForm::Map => ('{', '}'),
+        }
+    }
+
+    /// One entry as [`Self::to_ron`] writes it: indented, with a trailing
+    /// comma and a newline.
+    pub fn entry_text(&self, name: &str, value: &str) -> String {
+        let name = match self.form {
+            WrittenForm::Struct => name.into(),
+            WrittenForm::Map => std::borrow::Cow::Owned(quoted(name)),
+        };
+        format!("    {name}: {value},\n")
     }
 }
 

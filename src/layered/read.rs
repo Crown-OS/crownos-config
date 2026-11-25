@@ -3,7 +3,8 @@ use std::io;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use super::{loaded_defaults, migrate};
+use super::write::write_user_file;
+use super::{loaded_defaults, migrate, user_file};
 use crate::layers::SectionFiles;
 use crate::patch::PatchError;
 use crate::section_keys::SectionKeys;
@@ -16,7 +17,10 @@ pub(crate) struct Fallback<T> {
 }
 
 /// The default layers with the user's file on top. Each read also records the
-/// defaults for the next [`crate::save`] of the section.
+/// defaults for the next [`crate::save`] of the section, and writes the user's
+/// file when it is missing or a program wrote it for defaults that changed
+/// since. A failed
+/// write changes nothing that the read gives.
 pub(crate) fn read_section<T: DeserializeOwned + Serialize + Default>(
     section: &str,
     files: &SectionFiles,
@@ -30,6 +34,10 @@ pub(crate) fn read_section<T: DeserializeOwned + Serialize + Default>(
         Ok(text) => text,
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
             migrate::mark_reduced(files);
+            if !canonical_defaults.is_empty() {
+                let _ =
+                    write_user_file(section, files, &SectionKeys::default(), &canonical_defaults);
+            }
             return Ok(defaults);
         }
         Err(error) => {
@@ -49,6 +57,9 @@ pub(crate) fn read_section<T: DeserializeOwned + Serialize + Default>(
         }
     };
     let user_keys = if migrate::is_reduced(files) {
+        if user_file::has_outdated_defaults(&user_text, section, &canonical_defaults) {
+            let _ = write_user_file(section, files, &user_keys, &canonical_defaults);
+        }
         user_keys
     } else {
         migrate::reduce_to_user_changes::<T>(

@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use super::read::read_default_layers;
-use super::{USER_FILE_HEADER, loaded_defaults, migrate};
+use super::{loaded_defaults, migrate, user_file};
 use crate::layers::SectionFiles;
 use crate::section_keys::SectionKeys;
 use crate::util::{hash_bytes, record_written};
@@ -23,7 +23,7 @@ pub(crate) fn write_section<T: Serialize + DeserializeOwned + Default>(
     let existing_user_keys = existing_user_changes::<T>(section, files, &defaults);
     user_changes
         .retain(|key, value| existing_user_keys.contains(key) || defaults.get(key) != Some(value));
-    write_user_file(section, files, &user_changes)
+    write_user_file(section, files, &user_changes, &defaults)
 }
 
 /// Like [`write_section`] for an edit of single keys, such as a theme that
@@ -45,10 +45,13 @@ pub(crate) fn write_section_edit<T: Serialize + DeserializeOwned + Default>(
         let edited_now = original_keys.get(key) != Some(value);
         !is_default || (existing_user_keys.contains(key) && !edited_now)
     });
-    write_user_file(section, files, &user_changes)
+    write_user_file(section, files, &user_changes, &defaults)
 }
 
 /// Removes `keys` from the user's file, so that they follow the defaults again.
+/// The comments show the defaults of the last read of the section in this
+/// process, or else the default layers; the next read of the section writes
+/// the comments of the keys that only the program knows.
 pub fn reset_keys(section: &str, keys: &[&str]) -> io::Result<()> {
     let files = SectionFiles::for_section(section);
     let text = match std::fs::read_to_string(&files.user) {
@@ -58,7 +61,8 @@ pub fn reset_keys(section: &str, keys: &[&str]) -> io::Result<()> {
     };
     let mut user_changes = SectionKeys::parse(&text).map_err(invalid_data)?;
     user_changes.retain(|key, _| !keys.contains(&key));
-    write_user_file(section, &files, &user_changes)
+    let defaults = loaded_defaults::recall(section).unwrap_or_else(|| read_default_layers(&files));
+    write_user_file(section, &files, &user_changes, &defaults)
 }
 
 /// Writes the file atomically: a reader or a watcher never sees half of it.
@@ -68,6 +72,7 @@ pub(super) fn write_user_file(
     section: &str,
     files: &SectionFiles,
     user_changes: &SectionKeys,
+    defaults: &SectionKeys,
 ) -> io::Result<()> {
     let merged = read_default_layers(files).overlaid(user_changes.clone());
     record_written(section, hash_bytes(merged.to_ron().as_bytes()));
@@ -75,8 +80,10 @@ pub(super) fn write_user_file(
     if let Some(directory) = files.user.parent() {
         std::fs::create_dir_all(directory)?;
     }
-    let text = format!("{USER_FILE_HEADER}\n{}", user_changes.to_ron());
-    let temporary = files.user.with_extension("ron.tmp");
+    let text = user_file::render(section, defaults, user_changes);
+    let temporary = files
+        .user
+        .with_extension(format!("ron.tmp.{}", std::process::id()));
     std::fs::write(&temporary, text)?;
     std::fs::rename(&temporary, &files.user)
 }

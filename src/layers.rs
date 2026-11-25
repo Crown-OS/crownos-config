@@ -1,8 +1,10 @@
 //! The files that give a section its value. From the lowest to the highest:
 //! the `= default` of each field, the distro defaults that the `crownos-base`
 //! package installs, the defaults of the machine, and the user's own file. The
-//! user's file keeps only the keys that the user changed, so a system update
-//! that changes a default reaches every user who did not change that key.
+//! user's file sets only the keys that the user changed, so a system update
+//! that changes a default reaches every user who did not change that key. The
+//! other keys are in the file as comments with their current default, so the
+//! user can change one by removing the `//`.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};

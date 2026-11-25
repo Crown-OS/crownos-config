@@ -46,7 +46,7 @@ pub(super) fn reduce_to_user_changes<T: DeserializeOwned + Serialize + Default>(
                 .any(|defaults| defaults.get(key) == Some(value))
     });
     let written = keep_file_before_layers(files)
-        .and_then(|()| write_user_file(section, files, &user_changes));
+        .and_then(|()| write_user_file(section, files, &user_changes, canonical_defaults));
     match written {
         Ok(()) => {
             mark_reduced(files);
