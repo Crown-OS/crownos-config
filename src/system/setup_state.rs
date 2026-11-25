@@ -21,6 +21,7 @@ pub enum SetupTask {
     Browser,
     DeveloperTools,
     Playwright,
+    OnlinePackages,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -28,13 +29,19 @@ pub enum SetupTask {
 pub struct UnknownSetupTask(pub String);
 
 impl SetupTask {
-    pub const ALL: [SetupTask; 3] = [Self::Browser, Self::DeveloperTools, Self::Playwright];
+    pub const ALL: [SetupTask; 4] = [
+        Self::Browser,
+        Self::DeveloperTools,
+        Self::Playwright,
+        Self::OnlinePackages,
+    ];
 
     pub const fn id(self) -> &'static str {
         match self {
             Self::Browser => "browser",
             Self::DeveloperTools => "developer-tools",
             Self::Playwright => "playwright",
+            Self::OnlinePackages => "online-packages",
         }
     }
 
@@ -43,6 +50,7 @@ impl SetupTask {
             Self::Browser => "Web browser",
             Self::DeveloperTools => "Developer tools",
             Self::Playwright => "Playwright",
+            Self::OnlinePackages => "CrownOS apps",
         }
     }
 }
@@ -227,6 +235,7 @@ mod tests {
                 SetupTask::Browser => 0,
                 SetupTask::DeveloperTools => 1,
                 SetupTask::Playwright => 2,
+                SetupTask::OnlinePackages => 3,
             };
             seen[index] = true;
         }

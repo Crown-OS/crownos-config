@@ -12,9 +12,9 @@ pub use ai::{
     Runtime,
 };
 pub use setup::{
-    Browser, BrowserEngine, DeveloperTool, DeveloperTools, PLAYWRIGHT_BROWSERS_PATH,
-    PLAYWRIGHT_MCP_SERVER, PLAYWRIGHT_PREFIX, PackageSource, SETUP_CONFIG_PATH, SetupConfig,
-    SetupConfigError, UnknownBrowser, UnknownDeveloperTool,
+    Browser, BrowserEngine, DeveloperTool, DeveloperTools, ONLINE_PACKAGES_PATH,
+    PLAYWRIGHT_BROWSERS_PATH, PLAYWRIGHT_MCP_SERVER, PLAYWRIGHT_PREFIX, PackageSource,
+    SETUP_CONFIG_PATH, SetupConfig, SetupConfigError, UnknownBrowser, UnknownDeveloperTool,
 };
 pub use setup_state::{
     MAX_TASK_ATTEMPTS, SETUP_STATE_DIR, SetupStateError, SetupTask, TaskState, TaskStatus,

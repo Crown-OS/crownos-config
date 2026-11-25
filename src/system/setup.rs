@@ -11,6 +11,11 @@ use serde::{Deserialize, Serialize};
 
 pub const SETUP_CONFIG_PATH: &str = "/etc/crownos/setup.ron";
 
+/// The CrownOS packages that an installed system downloads, one name on each
+/// line. The installer writes the file; the `crownos-setup` runner installs
+/// each package that is still missing when the network is up.
+pub const ONLINE_PACKAGES_PATH: &str = "/etc/crownos/online-packages";
+
 /// Where the `crownos-setup` runner installs the Playwright npm packages.
 pub const PLAYWRIGHT_PREFIX: &str = "/usr/lib/crownos/playwright";
 
