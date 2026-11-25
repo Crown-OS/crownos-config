@@ -30,6 +30,12 @@ pub const MACHINE_DEFAULTS_DIR: &str = "/etc/crownos/defaults";
 /// to the keys that differ from all of them.
 pub const DEFAULTS_HISTORY_DIR: &str = "/usr/share/crownos/defaults-history";
 
+/// A file in [`DEFAULTS_HISTORY_DIR`] that allows the reduction of the full
+/// files that earlier releases wrote. The first release with layers does not
+/// ship it: a rollback from that release to one without layers then still
+/// finds the full files, because the older release has no default layers.
+pub const REDUCTION_FLAG_FILE: &str = "reduce-home-files";
+
 /// The directory in the config directory that holds one empty file for each
 /// section whose user file is reduced to the user's changes, or had no file.
 const REDUCED_SECTIONS_DIR: &str = ".layered";

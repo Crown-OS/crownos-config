@@ -30,13 +30,15 @@ fn e2e() {
 
 /// `<root>/config` is the user's directory, `<root>/distro` and
 /// `<root>/machine` are the default layers and `<root>/history` holds the
-/// defaults of earlier releases.
+/// defaults of earlier releases and allows their reduction.
 fn setup_environment() -> PathBuf {
     let root = std::env::temp_dir().join(format!("crownos-config-test-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     for directory in ["config", "distro", "machine", "history/0.2.0"] {
         std::fs::create_dir_all(root.join(directory)).expect("create temp config dir");
     }
+    std::fs::write(root.join("history").join(layers::REDUCTION_FLAG_FILE), "")
+        .expect("allow the reduction");
     let layers = std::env::join_paths([root.join("distro"), root.join("machine")])
         .expect("join layer directories");
     // SAFETY: single-threaded section of a single test function; no other
@@ -156,6 +158,22 @@ fn check_layered_section(root: &Path) {
     let reduced_marker = root.join("config/.layered/appearance");
     assert!(reduced_marker.exists(), "the first read marks the section");
     std::fs::remove_file(&reduced_marker).expect("make the home look like one from before layers");
+
+    let reduction_flag = root.join("history").join(layers::REDUCTION_FLAG_FILE);
+    std::fs::remove_file(&reduction_flag).expect("a release that does not reduce yet");
+    let appearance: Appearance = load(Appearance::SECTION);
+    assert_eq!(
+        appearance.accent,
+        AccentColor::Orange,
+        "the full file applies"
+    );
+    assert_eq!(
+        std::fs::read_to_string(&user_file).unwrap_or_default(),
+        to_ron(&written_in_full),
+        "a release before the reduction keeps the full file for a rollback"
+    );
+    assert!(!reduced_marker.exists(), "and does not mark the section");
+    std::fs::write(&reduction_flag, "").expect("the next release reduces");
     let appearance: Appearance = load(Appearance::SECTION);
     assert_eq!(
         appearance.accent,

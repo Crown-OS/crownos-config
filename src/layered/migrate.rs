@@ -1,6 +1,7 @@
 //! Earlier releases copied the distro files into each new home and wrote out
 //! every field the first time an app ran. Such a file pins each default for
-//! ever. The first read reduces it to the keys whose value differs from the
+//! ever. When the release allows it (see [`REDUCTION_FLAG_FILE`]), the first
+//! read reduces it to the keys whose value differs from the
 //! current defaults and from the defaults of each earlier release. A marker
 //! outside the file records the reduction, also for a section that had no
 //! file, so a file that the user writes after that keeps every key. The file
@@ -14,7 +15,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use super::write::write_user_file;
-use crate::layers::SectionFiles;
+use crate::layers::{REDUCTION_FLAG_FILE, SectionFiles};
 use crate::section_keys::SectionKeys;
 
 const BEFORE_LAYERS_EXTENSION: &str = "ron.before-layers";
@@ -56,13 +57,25 @@ pub(super) fn reduce_to_user_changes<T: DeserializeOwned + Serialize + Default>(
     }
 }
 
-pub(super) fn is_reduced(files: &SectionFiles) -> bool {
+/// True when the user's file holds only the user's changes, or when this
+/// release does not reduce files yet: then the file is used as it is.
+pub(super) fn keeps_user_file(files: &SectionFiles) -> bool {
+    is_reduced(files) || !reduction_allowed(files)
+}
+
+fn is_reduced(files: &SectionFiles) -> bool {
     files.reduced_marker.exists()
 }
 
-/// A failure only means that the next read tries the reduction again.
+fn reduction_allowed(files: &SectionFiles) -> bool {
+    files.defaults_history.join(REDUCTION_FLAG_FILE).exists()
+}
+
+/// A failure only means that the next read tries the reduction again. A
+/// release that does not reduce files writes no marker, so the first release
+/// that reduces them still does.
 pub(super) fn mark_reduced(files: &SectionFiles) {
-    if is_reduced(files) {
+    if is_reduced(files) || !reduction_allowed(files) {
         return;
     }
     if let Some(directory) = files.reduced_marker.parent() {

@@ -99,7 +99,7 @@ fn existing_user_changes<T: Serialize + DeserializeOwned + Default>(
     let Ok(user_keys) = SectionKeys::parse(&text) else {
         return SectionKeys::default();
     };
-    if migrate::is_reduced(files) {
+    if migrate::keeps_user_file(files) {
         return user_keys;
     }
     migrate::reduce_to_user_changes::<T>(
