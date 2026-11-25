@@ -17,7 +17,7 @@ const STAMP_PREFIX: &str = "// defaults-stamp: ";
 
 /// The user file for `user_changes` over `defaults`.
 pub(super) fn render(section: &str, defaults: &SectionKeys, user_changes: &SectionKeys) -> String {
-    let stamp = defaults_stamp(section, defaults);
+    let stamp = defaults_stamp(defaults);
     let mut text = header(section, &stamp);
     text.push_str(&body(section, defaults, user_changes));
     text
@@ -25,8 +25,8 @@ pub(super) fn render(section: &str, defaults: &SectionKeys, user_changes: &Secti
 
 /// True when a program wrote `text` for other defaults. A file without a stamp
 /// was written by hand and stays as it is until a program saves the section.
-pub(super) fn has_outdated_defaults(text: &str, section: &str, defaults: &SectionKeys) -> bool {
-    written_stamp(text).is_some_and(|stamp| stamp != defaults_stamp(section, defaults))
+pub(super) fn has_outdated_defaults(text: &str, defaults: &SectionKeys) -> bool {
+    written_stamp(text).is_some_and(|stamp| stamp != defaults_stamp(defaults))
 }
 
 fn header(section: &str, stamp: &str) -> String {
@@ -39,9 +39,10 @@ fn header(section: &str, stamp: &str) -> String {
     )
 }
 
-fn defaults_stamp(section: &str, defaults: &SectionKeys) -> String {
-    let template = body(section, defaults, &SectionKeys::default());
-    format!("{:016x}", hash_bytes(template.as_bytes()))
+/// Only the default values give the stamp: two programs built with other doc
+/// comments for the section then agree, and do not write the file in turn.
+fn defaults_stamp(defaults: &SectionKeys) -> String {
+    format!("{:016x}", hash_bytes(defaults.to_ron().as_bytes()))
 }
 
 fn written_stamp(text: &str) -> Option<&str> {
@@ -213,17 +214,22 @@ mod tests {
     fn the_stamp_follows_the_defaults() {
         let defaults = defaults_of(&Sound::default());
         let text = render(Sound::SECTION, &defaults, &SectionKeys::default());
-        assert!(!has_outdated_defaults(&text, Sound::SECTION, &defaults));
+        assert!(!has_outdated_defaults(&text, &defaults));
 
         let louder = defaults_of(&Sound {
             output_volume: 80.0,
             ..Sound::default()
         });
-        assert!(has_outdated_defaults(&text, Sound::SECTION, &louder));
-        assert!(!has_outdated_defaults(
-            "(muted: true)\n",
-            Sound::SECTION,
-            &louder
-        ));
+        assert!(has_outdated_defaults(&text, &louder));
+        assert!(!has_outdated_defaults("(muted: true)\n", &louder));
+    }
+
+    #[test]
+    fn other_doc_comments_give_the_same_stamp() {
+        let defaults = defaults_of(&Sound::default());
+        let text = render(Sound::SECTION, &defaults, &SectionKeys::default());
+        let without_docs = render("a-section-without-docs", &defaults, &SectionKeys::default());
+
+        assert_eq!(written_stamp(&text), written_stamp(&without_docs));
     }
 }

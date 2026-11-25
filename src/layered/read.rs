@@ -57,7 +57,7 @@ pub(crate) fn read_section<T: DeserializeOwned + Serialize + Default>(
         }
     };
     let user_keys = if migrate::is_reduced(files) {
-        if user_file::has_outdated_defaults(&user_text, section, &canonical_defaults) {
+        if user_file::has_outdated_defaults(&user_text, &canonical_defaults) {
             let _ = write_user_file(section, files, &user_keys, &canonical_defaults);
         }
         user_keys
